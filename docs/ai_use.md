@@ -1,0 +1,2 @@
+## Generative AI Use (Transparency Note)
+I used generative AI as a writing and workflow assistant (outlining, drafting notes, refining wording, and organizing tasks). All analysis decisions, code execution, interpretation, and final claims were reviewed, edited, and validated by me. I do not use AI to fabricate results or sources; any metrics or findings reported are reproducible from the included code and data.

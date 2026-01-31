@@ -1,6 +1,5 @@
 # Process Diary
 
-
 ## 2026-01-26  Entry 1 — Module 1 & 2 (Project Foundation + Data Discovery)
 
 ### What I completed
@@ -44,4 +43,32 @@
   - stakeholder questions → measurable objectives → candidate outcomes → candidate predictors
 - Create a first-pass mapping approach for ICU pathway grouping (diagnoses-based, upgraded later with interventions).
 - Commit repo scaffold + Module 1 notes + Process Diary entry 1.
+
+## 2026-01-31  Entry 2 — Module 2 (Business Understanding Deep Dive)
+
+### What I completed
+- Reviewed CRISP-DM Business Understanding tasks: business objectives → assess situation → data mining goals → project plan.
+- Drafted initial business objective + success criteria aligned to QI/operations.
+- Identified early assumptions/constraints (small N, heterogeneity, missingness risk, date-shift reality).
+- Created initial “translation layer”: stakeholder needs → technical goals (prediction/stratification/phenotyping).
+
+### Key takeaways
+- “Technical success” ≠ “business success.” Metrics must map to decisions/actions.
+- Assumptions/risk framing isn’t bureaucracy - it prevents political/interpretation failure modes.
+- Iteration is expected; planning includes explicit review points and re-scoping triggers.
+
+### Decisions made
+- Primary framing: QI-style narrative (actionable, operationally relevant).
+- Default unit of analysis (tentative): ICU stay-level, pending EDA confirmation.
+- Commit to defining an “early window” for features to avoid leakage (tentative: first 6–24h).
+
+### Open questions
+- Exact primary endpoint(s): ICU LOS vs mortality vs prolonged LOS vs utilization proxies.
+- Best approach to “pathway grouping” (diagnosis-based vs intervention-based vs clustering).
+- What’s the most defensible minimal feature set for small N?
+
+### Next steps
+- Start M3 with a 1-page problem framing + stakeholder decision statement.
+- Run quick table inventory + key counts to confirm grain/joins.
+
 
