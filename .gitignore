@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Editors/OS
+.vscode/
+.idea/
+.DS_Store
+
+# Large outputs (rebuildable)
+outputs/models/
+outputs/figures/
+outputs/tables/
+
+# Data (keep out of git; still include in Coursera ZIP if needed)
+data/raw/
+data/interim/
+data/processed/
+
+# Keep placeholder files
+!.gitkeep

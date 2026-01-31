@@ -1,0 +1,47 @@
+# Process Diary
+
+
+## 2026-01-26  Entry 1 — Module 1 & 2 (Project Foundation + Data Discovery)
+
+### What I completed
+- Reviewed course structure, grading, and the three major assignments aligned to CRISP-DM.
+- Reviewed CRISP-DM phases and the “hierarchical structure” concept (phases → tasks → specialized tasks → process instance).
+- Chose a project option: **ICU Patient Care Analysis (MIMIC-IV demo)**.
+- Set up repository structure to support “show your work” requirements.
+- Skimmed dataset documentation and confirmed key tables needed for analysis:
+  - patients, admissions, icustays, transfers
+  - labevents + d_labitems, chartevents + d_items
+  - diagnoses_icd + d_icd_diagnoses
+  - inputevents, procedureevents
+
+### Key takeaways
+- CRISP-DM is iterative: it’s normal to move backward when data quality issues or new questions appear.
+- Documentation is not extra — it’s a deliverable that supports alignment and reproducibility.
+- In real-world analytics, wording and metric selection can drive politics and incentives; accuracy and framing matter.
+- MIMIC’s deidentification (date shifting) preserves **durations/intervals** within a patient encounter but limits “true calendar time” analyses (e.g., real demand curves across patients).
+
+### Decisions made
+- **Project selection:** MIMIC-IV ICU Patient Care Analysis.
+- **Initial framing:** lean toward a **QI-style** narrative (operational + clinical relevance).
+- **Keep options open:** not committing yet to Kaplan–Meier or any single method until EDA confirms feasibility.
+- **Repository choice:** keep raw data out of Git; document how to obtain data locally; commit scaffold + notes early.
+
+### Open questions
+- What is the best **unit of analysis** given sample size and table structure?
+  - ICU stay-level (stay_id) vs admission-level (hadm_id) vs patient-level (subject_id)
+- Which **primary outcome(s)** are strongest for a capstone-grade story with this dataset?
+  - ICU LOS, in-hospital mortality, ICU bounceback, hospital readmission
+- How complete are ED timestamps (edregtime/edouttime) for flow metrics?
+- What is a defensible “early window” for feature extraction (6h vs 24h) without leakage?
+- How should ICU stays be grouped into high-level pathways (cardiac/neuro/trauma/sepsis/etc.) without over-segmenting?
+
+### Next steps
+- Do a lightweight EDA pass focused on feasibility:
+  - counts per key entity (patients/admissions/stays)
+  - missingness and timestamp availability
+  - distribution checks for LOS and outcome flags
+- Draft a short “analysis plan” for Assignment 1:
+  - stakeholder questions → measurable objectives → candidate outcomes → candidate predictors
+- Create a first-pass mapping approach for ICU pathway grouping (diagnoses-based, upgraded later with interventions).
+- Commit repo scaffold + Module 1 notes + Process Diary entry 1.
+
