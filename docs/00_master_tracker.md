@@ -1,20 +1,21 @@
 # 00 — Master Tracker (Case Studies in Data Science)
 
 ## Current status
-- Current module: M3
+- Current module: M3 (process diary submitted; moving into M4 next)
 - Current objective (1 sentence):
-  Translate the ICU Patient Care Analysis context into a crisp QI-style problem statement, with measurable business + technical success criteria, and explicit assumptions/risks.
-- Next deadline: 2026-02-02 (Module 03 Process Diary, 10:59 PM CST)
-- Risk level: Medium
+  Lock a defensible QI-style story by finalizing unit-of-analysis + outcome definitions (readmission + prolonged ICU stay), then validate feasibility with a quick inventory pass before deeper modeling.
+- Next deadline: 2026-02-09 M4 Data Understanding Quiz
+
+- Risk level: Medium (mostly due to N≈100 + sparsity + subgroup sizes)
 - Next 3 actions:
-  1. M3 writing: draft Background + Business Objectives/Success Criteria (drop into `reports/M05_assignment1_draft.md`)
-  2. M3 writing: draft Data Science Goals/Success Criteria + “Assessment of Responsibility” (ethics/limitations)
-  3. Update `docs/assumptions_risks.md` (3–5 bullets) + add “perverse incentives” note
+  1. Update repo artifacts: master tracker + decision log + assumptions/risks refresh (commit + push)
+  2. Load MIMIC-IV demo tables into local Postgres for SQL-first exploration (rowcounts, keys, join routes)
+  3. Feasibility pass + ERD: confirm readmission counts + prolonged ICU stay distribution; draft ER diagram to stabilize the “schema mental model”
 
 ---
 
 ## Course map (CRISP-DM alignment)
-- Unit 1 (M1–M5): Business Understanding + Data Understanding → **Assignment 1**
+- Unit 1 (M1–M5): Business Understanding + Data Understanding → **Assignment 1** DUE 2026-02-16
 - Unit 2 (M6–M9): Data Preparation + Modeling → **Assignment 2**
 - Unit 3 (M10–M13): Evaluation + Deployment → **Assignment 3**
 - M14: wrap-up / synthesis
@@ -31,49 +32,49 @@
 
 ### M2 — Business Understanding (Part 1)
 - [x] Module content completed (videos/readings/quiz)
-- [ ] Stakeholders + decision(s) they need to make (even if fictional)
-- [ ] Initial success criteria draft (business + technical)
-- [ ] Add 3–5 assumptions/risks to docs
+- [~] Stakeholders + decision(s) they need to make (drafted; tighten decision statements to 1–2)
+- [~] Initial success criteria draft (business + technical) (drafted; refine thresholds + feasibility)
+- [x] Add 3–5 assumptions/risks to docs (drafted; needs minor refresh)
 
 ### M3 — Business Understanding (Part 2)
 - [x] Module overview complete
 - [x] Background section reading complete
-- [ ] Constraints + risks refined (short + realistic)
+- [x] Constraints + risks refined (short + realistic)
 - [ ] “Perverse incentives” check (what could be misinterpreted / gamed)
-- [ ] Data science goals + success criteria drafted
-- [ ] Project plan drafted (high level is fine)
-- [ ] Module 3 process diary entry written
+- [x] Data science goals + success criteria drafted
+- [x] Project plan drafted
+- [x] Module 3 process diary entry written + submitted
+
 
 ### M4 — Data Understanding (Part 1)
-
+- [ ] Load demo dataset into Postgres (local)
+- [ ] Confirm keys, grains, and join routes (subject_id / hadm_id / stay_id)
+- [ ] Table inventory: rowcounts + coverage (events density, missingness patterns)
+- [ ] ERD v1 drafted (dbdiagram.io or similar)
 
 ### M5 — Data Understanding (Part 2) + **Assignment 1 due**
+- [ ] Assignment 1 report assembled (BU + DU sections)
+- [ ] EDA artifacts included (figures/tables + data quality summary)
+- [ ] Decision log + assumptions/risks updated and referenced in report
 
 ### M6 — Data Prep (Part 1)
-
 ### M7 — Data Prep (Part 2)
-
 ### M8 — Modeling (Part 1)
-
 ### M9 — Modeling (Part 2) + **Assignment 2 due**
-
 ### M10 — Evaluation (Part 1)
-
 ### M11 — Evaluation (Part 2)
-
 ### M12 — Deployment (Part 1)
-
 ### M13 — Deployment (Part 2) + **Assignment 3 due**
-
 ### M14 — Wrap-up
 
 ---
 
 ## Milestones (submission readiness checks)
+
 ### Assignment 1 — Business & Data Understanding (M5)
 **Must have:**
 - [ ] `reports/M05_assignment1.md` (or PDF)
-- [ ] Notebooks: data inventory + EDA
+- [ ] Notebooks: data inventory + EDA (or SQL-first equivalent with saved outputs)
 - [ ] `docs/` updated: assumptions/risks + decisions + process diary entry
 - [ ] Repo ZIP passes: “someone else can follow this”
 
@@ -93,31 +94,32 @@
 - [ ] Repo integrated and tidy
 
 ---
-## Notes / parking lot
-- Open questions:
-  - What is the best unit of analysis for this dataset?
-    - ICU stay-level (`stay_id`) vs admission-level (`hadm_id`) vs patient-level (`subject_id`)
-    - How many patients have multiple ICU stays or multiple admissions (i.e., is “recidivism” even measurable in the demo subset)?
-  - Which primary outcome(s) are feasible and tell a defensible QI-style story with N≈100?
-    - ICU LOS vs hospital LOS
-    - In-hospital mortality (is event count sufficient?)
-    - ICU transfer patterns / stepdown / ICU bounceback (if supported)
-    - Readmission/return visits (likely limited — confirm)
-  - Cohort strategy: what’s the most defensible way to group ICU stays into high-level pathways without over-segmenting?
-    - ICD-based cohorts (cardiac/neuro/trauma/sepsis/other) vs care-unit-based vs hybrid (ICD + procedures + meds/labs)
-    - Do we have enough cases per cohort to model separately, or do we need fewer buckets?
-  - What is a defensible “early window” for feature extraction that avoids leakage?
-    - 6h vs 12h vs 24h from ICU admit (confirm timestamp density supports this)
-  - Data completeness check:
-    - How sparse are `chartevents`, `labevents`, `inputevents`, `procedureevents` in the demo subset?
-    - Is missingness systematic (sicker patients measured more often → bias)?
-  - Stakeholder decision clarity:
-    - What exact decision(s) should this analysis inform (protocol changes, resource allocation, early risk flagging, etc.)?
-    - What “success” looks like in measurable-ish terms for a class project (since real deployment impact isn’t measurable here)
-  - Workflow/tooling:
-    - Load into Postgres now for repeatable SQL EDA vs stay Python/pandas-first until inventory is done
-    - If Postgres: do we need a lightweight ERD/db diagram to document joins and grains?
-- Things to look up later:
-  - ICD10 codes for specific ICU cohorts (Cardiac, Neuro, Trauma, Sepsis, Other)
-    - Verify with Dr. Gibney (UCI Health) whether this cohort mental model is “good enough” for a capstone framing
 
+## Notes / parking lot
+
+### Open questions (next to resolve)
+- Unit of analysis:
+  - ICU stay-level (`stay_id`) vs admission-level (`hadm_id`) vs patient-level (`subject_id`)
+  - If “readmission” is a primary outcome, definition probably needs to be admission-level, then linked back to ICU exposure
+- Outcomes feasibility with N≈100:
+  - Hospital readmission / return visits: early EDA suggests this might actually have enough signal, but confirm counts formally
+  - Prolonged ICU stay: pick a literature-backed threshold (likely varies by ICU type/condition), then sanity-check distribution in the demo cohort
+- Cohort strategy:
+  - ICU subtypes/pathways: cardiac, neuro, trauma, sepsis, other
+  - Risk: over-segmentation → fallback to fewer buckets or pooled analysis with “reason codes”
+- Early-window feature engineering (avoid leakage):
+  - Candidate window: 6–24 hours after ICU admit
+  - Feasibility depends on early labs/vitals density in demo tables
+- Data completeness / measurement bias:
+  - How sparse are `chartevents`, `labevents`, `inputevents`, `procedureevents`?
+  - Is missingness systematic (sicker patients get measured more → bias)?
+- Stakeholder decision clarity:
+  - Tighten to 1–2 decisions (ex: “which sub-cohorts drive disproportionate ICU resource use?” and “what early signals predict prolonged stay/readmission risk?”)
+- Workflow/tooling:
+  - Postgres-first EDA for repeatability + cleaner joins
+  - ERD is a requirement for staying sane once SQL exploration starts
+
+### Things to look up later
+- Literature thresholds for “prolonged ICU stay” (overall + condition-specific where relevant)
+- ICD-based cohort mapping starter list (Cardiac/Neuro/Trauma/Sepsis/Other)
+- Optional: sanity-check cohort definitions with a domain expert (if needed)
