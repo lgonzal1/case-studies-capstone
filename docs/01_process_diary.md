@@ -47,15 +47,16 @@
 ## 2026-01-31  Entry 2 — Module 2 (Business Understanding Deep Dive)
 
 ### What I completed
-- Reviewed CRISP-DM Business Understanding tasks: business objectives → assess situation → data mining goals → project plan.
-- Drafted initial business objective + success criteria aligned to QI/operations.
-- Identified early assumptions/constraints (small N, heterogeneity, missingness risk, date-shift reality).
-- Created initial “translation layer”: stakeholder needs → technical goals (prediction/stratification/phenotyping).
+- Reviewed CRISP-DM Business Understanding tasks: determine business objectives → assess situation → define data mining goals → produce a project plan.
+- Drafted an initial QI/operations-flavored business objective and sketched what “success” should look like for a class project (reproducible + defensible, not fake ROI claims).
+- Surfaced early assumptions/constraints that shape scope: small N (demo cohort), cohort heterogeneity, missingness risk, and date-shift reality (intervals valid, calendar time not).
+- Started a “translation layer” from stakeholder questions to technical work (e.g., defining outcomes, defining cohort groupings, and enforcing an early-window cutoff to avoid leakage).
+- Updated my project planning artifacts (tracker/diary/decision log) so my scope and uncertainties are explicit going into Module 3.
 
 ### Key takeaways
-- “Technical success” ≠ “business success.” Metrics must map to decisions/actions.
-- Assumptions/risk framing isn’t bureaucracy - it prevents political/interpretation failure modes.
-- Iteration is expected; planning includes explicit review points and re-scoping triggers.
+- “Technical success” ≠ “business success.” Metrics must map to a decision or action.
+- Assumptions/risks aren’t bureaucracy — they prevent misleading interpretations and bad incentives.
+- Iteration is expected; project plans need explicit review/re-scope triggers.
 
 ### Decisions made
 - Primary framing: QI-style narrative (actionable, operationally relevant).
@@ -66,9 +67,10 @@
 - Exact primary endpoint(s): ICU LOS vs mortality vs prolonged LOS vs utilization proxies.
 - Best approach to “pathway grouping” (diagnosis-based vs intervention-based vs clustering).
 - What’s the most defensible minimal feature set for small N?
+- How sparse are event tables in the demo subset, and is missingness systematic (measurement bias)?
 
 ### Next steps
-- Start M3 with a 1-page problem framing + stakeholder decision statement.
-- Run quick table inventory + key counts to confirm grain/joins.
-
+- Start Module 3 with a 1-page problem framing + stakeholder decision statement.
+- Run a quick table inventory + key counts to confirm grain/joins and feasibility.
+- Draft Background + Business Objectives + Success Criteria sections in a first-pass report outline.
 
