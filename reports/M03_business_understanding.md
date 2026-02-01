@@ -1,21 +1,22 @@
 # Module 3 — Business Understanding Draft (MIMIC-IV Demo ICU Patient Care Analysis)
 
-> **AI use note:** This draft was assembled with help from a generative AI assistant acting as a writing/organization aid (summarizing my notes, structuring outlines, and converting brainstormed bullets into a first draft). All project decisions, interpretations, and final wording are mine.
-
 ## 1) Background / Context (project framing)
 
-I am completing a capstone-style case study using the **ICU Patient Care Analysis** option on the **MIMIC-IV Clinical Database Demo** (open-access subset; N≈100 ICU patients). The dataset represents realistic EHR complexity (ICU stays, transfers, vitals, labs, diagnoses, inputs, procedures), but the demo subset is small and may be sparse for some event tables.
+I am completing a capstone-style case study using the **ICU Patient Care Analysis** option on the **MIMIC-IV Clinical Database Demo** (open-access subset; N≈100 ICU patients). The dataset captures realistic EHR complexity (ICU stays, transfers, vitals, labs, diagnoses, inputs, procedures), but the demo subset is intentionally small and may be sparse for some event tables.
 
-This project is intentionally framed with a **QI-style** narrative: the goal is to describe and analyze ICU care patterns and outcomes in a way that resembles real operational/clinical analytics work (e.g., using interval-based timestamps, clarifying assumptions, and avoiding metric framing that creates misleading incentives).
+This project is framed with a **quality-improvement (QI)-style** narrative: the goal is to define defensible ICU operational/outcome metrics and explore which *patient subgroups and early clinical signals* are associated with disproportionate resource utilization and worse downstream outcomes (especially **hospital readmission**). The analysis is descriptive and hypothesis-generating (not causal inference).
 
-**Important dataset constraint:** MIMIC dates are **patient-shifted** for de-identification. This preserves **durations/intervals** within a patient encounter, but it limits “true calendar time” analyses across patients (e.g., real-world demand curves by hour/day across the entire cohort).
+**Important dataset constraint:** dates are **patient-shifted** for de-identification. This preserves within-encounter **durations/intervals** for each patient, but limits cross-patient “true calendar time” analyses (e.g., real-world demand curves by day-of-week across the cohort).  
+[Ref A: MIMIC-IV documentation / date shifting]
 
 ### Tables already identified as in-scope (current shortlist)
 Hospital / core:
 - admissions
+
 ICU / flow:
 - icustays
 - transfers
+
 Clinical events:
 - labevents + d_labitems
 - chartevents + d_items
@@ -23,139 +24,205 @@ Clinical events:
 - inputevents
 - procedureevents
 
-## 2) Business Objectives (QI-style)
+### Key outcomes I plan to evaluate (initial shortlist)
+- **ICU length of stay (ICU LOS):** ICU admit → ICU discharge (stay-level)
+- **Prolonged ICU stay:** threshold-based indicator + sensitivity analysis (see Section 6)
+- **Hospital readmission:** re-hospitalization within a defined window after discharge (see Section 6)
+- Optional if feasible (demo-dependent): in-hospital mortality, transfers/ICU returns, procedure-dependent waits
 
-### Primary business objective (draft)
-Translate ICU care questions into measurable objectives that can support **quality improvement thinking**: identify patterns in ICU patient care and recovery that are associated with outcomes and resource utilization.
-
-This is explicitly a **capstone / educational** analysis using a demo dataset, so the output is best framed as:
-- evidence-based descriptive insights and
-- defensible analytic prototypes (methods + definitions)
-that could *inform* how a real ICU QI team might measure or investigate similar questions.
-
-### Secondary objectives (draft)
-- Establish a clear, reproducible definition of ICU episodes and timelines using timestamps (ICU admit → ICU discharge; transfers).
-- Explore feasibility of outcome analyses given small N (e.g., LOS distributions; mortality counts if present; transfer patterns if supported).
-- Explore high-level ICU “pathway” grouping as a first-pass mental model (to be verified later): **cardiac, neuro, trauma, sepsis, other**.
-
-## 3) Business Success Criteria (what “good” looks like for this class project)
-
-Because this is a demo dataset and not a live implementation, success is measured by producing a clear, defensible analytic narrative:
-
-- A reproducible, well-documented analysis workflow (repo structure + notes + clear joins and grains).
-- Feasibility decisions are explicit (what is analyzable vs what is not, and why).
-- Outcomes and cohorts are defined in a way that is defensible for a QI-style story *without* overstating causality.
-- Clear communication of limitations (small N, missingness, de-ID date shifting, measurement bias risk).
-- Practical outputs suitable for a capstone submission: report sections, tables/figures, and documented decisions.
-
-## 4) Stakeholders + Decisions (role-play, since this is a demo dataset)
-
-Stakeholders for the narrative are framed as ICU/QI audiences who would plausibly use this style of analysis:
-
-- ICU clinical leadership (protocol and pathway framing)
-- ICU operations / bed management (resource utilization and flow)
-- Hospital quality improvement team (measurement definitions, bias/assumption tracking)
-
-**Decisions this analysis is meant to inform (draft):**
-- What outcomes and operational metrics are most defensible to monitor given available data?
-- How should ICU stays be grouped into coarse “pathways” without over-segmenting?
-- What early-window signals are feasible to compute without leaking future information?
-
-> [TODO] tighten to 1–2 “decision statements” once outcomes/unit-of-analysis are finalized.
+> Note: Early EDA suggests *non-trivial readmission frequency* even with only ~100 patients, making it a viable outcome for subgroup comparisons (with appropriate caution on small N).
 
 ---
 
-# Task 2 — Assess Situation
+## 2) Business Objectives & Success Criteria (QI-style)
 
-## 5) Inventory of Resources
+### 2.1 Primary business objective (decision-support framing)
+Identify which ICU patient subgroups and early clinical signals are associated with:
+1) **disproportionately long ICU stays** (including “prolonged ICU stay”), and  
+2) **higher risk of hospital readmission**,  
+in order to generate operationally-relevant hypotheses (e.g., “which cohorts are slower and why”) that an ICU QI team could investigate in a real setting.
 
-### Data resources (available locally)
-- MIMIC-IV demo CSVs: admissions, icustays, transfers, and selected events/dim tables listed above.
-- Documentation sources: MIMIC table documentation and definitions (including the note that LOINC mapping is maintained in a separate code repository rather than in-table).
+This is a demo dataset, so the deliverable is best framed as:
+- defensible **metric definitions** + cohort logic,
+- clear **descriptive findings** + subgroup comparisons,
+- and (if feasible) simple, interpretable **predictive prototypes** using early-window features (no leakage).
+
+### 2.2 Secondary objectives
+- **Define ICU episodes cleanly** using timestamps and transfers (ICU admit → ICU discharge; handling multiple ICU stays per hospital admission).
+- **Subgroup / pathway analysis:** test whether outcomes differ across ICU subtypes/cohorts (initial buckets):
+  - trauma, neuro, cardiac, sepsis/medical, other
+- **Explain the “why” operationally (hypothesis list):** for subgroups with longer stays or more readmissions, explore plausible drivers:
+  - procedure waits, ventilation/weaning time, lab-dependent delays (e.g., cultures), high measurement intensity as severity proxy, etc.
+- **Validate feasibility:** quantify missingness/sparsity by table and feature family so the analysis stays honest and right-sized.
+
+### 2.3 Quantitative success criteria (class-appropriate)
+- Cohort construction and joins are reproducible and validated at the correct grain (`stay_id`, `hadm_id`, `subject_id`).
+- ICU LOS distributions are summarized overall and by cohort (with uncertainty shown where possible).
+- Readmission rate is computed using a documented operational definition (e.g., 30-day) and reported overall + by cohort.
+- Subgroup comparisons are presented with effect sizes and confidence intervals (not just p-values), with clear caveats about statistical power.
+
+### 2.4 Qualitative success criteria
+- Clear, defensible definitions that avoid incentive-toxic metrics (explicit assumptions and edge cases).
+- Transparent discussion of bias risks (measurement intensity, missing-not-at-random, severity confounding).
+- A narrative that would make sense to an ICU leader: what is different across cohorts, what might drive it, and what would be worth investigating operationally.
+
+---
+
+## 3) Stakeholders + “Decisions this informs” (role-play, demo dataset)
+
+### Primary stakeholder
+- **ICU Director** (most directly accountable for ICU throughput/outcomes and likely to care about prolonged stays and readmissions)
+
+### Secondary stakeholders
+- ICU operations / bed management (capacity, flow)
+- Hospital QI leadership (metrics, fairness, definitional defensibility)
+- CMO/executive leadership (high-level outcomes, but less detail than ICU Director)
+
+### Decisions this analysis is meant to inform (tightened)
+1) **Where to focus QI effort:** which ICU cohorts show the largest burden of prolonged LOS and/or readmission?
+2) **What to measure early:** which *early-window* indicators are feasible and potentially predictive of disproportionate resource use or readmission (without leaking future information)?
+
+---
+
+# Task 2 — Assess Situation (CRISP-DM)
+
+## 4) Inventory of Resources
+### Data resources
+- MIMIC-IV demo tables listed above, plus table dictionaries (`d_*` tables) where available.
+- MIMIC documentation for table meanings, key fields, and de-identification constraints.  
+[Ref A]
 
 ### Compute / workflow resources
-- Local repo with version control (GitHub) and a reproducible structure (“show your work”).
-- Tooling under consideration: pandas-first EDA vs loading into Postgres for repeatable SQL EDA. (Decision not finalized yet.)
+- Local repo with version control and a reproducible structure (“show your work”).
+- Tooling: pandas-first EDA vs Postgres-first repeatable SQL (decision still open; either is acceptable if documented).
 
-### People / domain resources
-- I can sanity-check the cohort mental model with :contentReference[oaicite:0]{index=0} at :contentReference[oaicite:1]{index=1} as a reality-check (not as a data source).
+### Domain resources
+- ICU QI framing is based on general operational logic; thresholds/definitions will be supported with literature citations rather than personal opinion.  
+[Ref B/C/D]
 
-## 6) Requirements, Assumptions, Constraints (draft)
+---
+
+## 5) Requirements, Assumptions, Constraints
 
 ### Requirements
-- Keep work reproducible and well-documented for capstone grading.
-- Keep raw data out of Git; document how it is obtained/placed locally.
-- Use clear definitions for any metric that depends on timestamps or cohort mapping.
+- Reproducible workflow; raw data not committed to Git; clear “how to run” notes.
+- Explicit definitions for any metric dependent on timestamps, cohort mapping, or windows.
+- Avoid causal claims; keep inference aligned to what the demo dataset can support.
 
 ### Constraints
-- Small dataset: demo cohort is ~100 ICU patients, limiting robust modeling and subgroup analysis.
-- De-identification: shifted dates preserve within-encounter intervals but limit real “calendar-time” demand analysis.
-- Table sparsity/missingness likely varies across labevents/chartevents/inputevents/procedureevents.
+- Small dataset (N≈100 ICU patients) → limited power for fine-grained subgroup modeling.
+- De-identification date shifting → good for within-patient durations; weaker for cross-patient calendar-time utilization claims.
+- Potential sparsity in event tables (chartevents/labevents/inputevents/procedureevents), varying by patient and cohort.
 
-### Assumptions (explicit, draft)
-- Timestamp sequences within a stay are meaningful for interval-based analysis (durations).
-- Cohort grouping using ICD codes is a reasonable first-pass approach (to validate/adjust later).
-- “Early window” feature extraction (e.g., 6h/12h/24h from ICU admit) can be done without leakage if event timestamps are sufficiently dense.
+### Assumptions (explicit)
+- Within-patient timestamp ordering is meaningful enough for interval-based features (durations, early windows).
+- Cohort grouping using diagnoses (and possibly procedures) is “good enough” for a first-pass pathway model, but must be validated.
+- Measurement frequency is not random; high measurement can proxy severity and may confound associations.
 
-## 7) Risks + Contingencies (draft)
+---
 
-- **Risk: too few cases per cohort** (cardiac/neuro/trauma/sepsis/other) → contingency: reduce to fewer buckets or analyze overall cohort only.
-- **Risk: event-table sparsity / missingness** blocks key features → contingency: pivot to higher-level features (diagnoses, basic demographics, LOS/transfer patterns).
-- **Risk: measurement bias** (sicker patients have more labs/vitals → missingness is not random) → contingency: acknowledge bias, consider simple sensitivity checks (e.g., measurement count as proxy).
-- **Risk: leakage** from using data too late in the stay → contingency: enforce an “early window” cutoff and document it.
-- **Risk: throughput/demand curves not valid** due to date shifting + incomplete coverage → contingency: avoid cross-patient “real-time demand” claims; focus on within-stay timelines and distributions.
+## 6) Operational Definitions (outcomes + key terms)
 
-## 8) Terminology (starter list)
-- **Unit of analysis:** ICU stay (`stay_id`) vs hospital admission (`hadm_id`) vs patient (`subject_id`) — not finalized.
-- **Outcome:** ICU LOS, hospital LOS, in-hospital mortality, transfer patterns/bounceback — feasibility TBD.
-- **Early window:** first 6h / 12h / 24h after ICU admission (candidate cutoffs).
-- **Cohort / pathway:** coarse grouping of ICU stays into cardiac/neuro/trauma/sepsis/other (first-pass mental model).
+### 6.1 Unit of analysis (candidate)
+- Primary: **ICU stay** (`stay_id`) for ICU LOS and early-window features
+- Linking: **hospital admission** (`hadm_id`) for readmission logic and discharge timing
+- Patient-level: `subject_id` to connect multiple admissions and multiple ICU stays
 
-## 9) Costs / Benefits (class framing)
-- “Costs”: time spent on data inventory, cleaning, and documentation; scope control due to small N and missingness.
-- “Benefits”: a portfolio-safe, realistic healthcare analytics project demonstrating CRISP-DM thinking, explicit assumptions, and reproducible workflow.
+> [TODO] Finalize which unit drives each section: ICU LOS (stay-level), readmission (admission-level), subgroup (stay-level or admission-level depending on cohort definition).
+
+### 6.2 Hospital readmission (explicit)
+**Hospital readmission** will be defined as a *subsequent hospital admission* for the same patient (`subject_id`) that occurs within **X days** after discharge of an index admission (`hadm_id`).  
+- Default window: **30-day readmission** (common operational standard)  
+- Sensitivity: 7/14/30 days if small-N instability suggests it
+
+Implementation approach:
+- Sort admissions by (`subject_id`, `admittime`)
+- For each index discharge time, flag whether the next `admittime` occurs within the window
+- Report overall rate + cohort-stratified rates
+
+[Ref E: readmission within 30 days is a common operational definition; Ref A/F: admissions fields]
+
+> [TODO] Decide whether to exclude planned readmissions (likely not feasible in demo) and how to treat transfers vs true discharge/re-admit.
+
+### 6.3 Prolonged ICU stay (threshold + sensitivity plan)
+“Prolonged ICU stay” does not have a single universal threshold in the literature; definitions vary by population and study design. The plan is:
+
+**Primary operational definition (baseline):**
+- Prolonged ICU stay = **ICU LOS ≥ 14 days** (initial working threshold)
+
+**Cohort-aware sensitivity analysis:**
+- Trauma/general ICU-like cohorts: test **≥ 7 days** as an alternate threshold
+- Neuro/ICH-like cohorts: test **≥ 10 days** as an alternate threshold
+- Also test **≥ 14 days** across all cohorts for consistency and comparability
+
+Rationale:
+- Studies commonly use thresholds in the **~7–14 day** range, and some context-specific definitions use **~8 days (trauma)** or **~10 days (ICH)**.  
+[Ref B/C/D]
+
+> [TODO] Add 1–2 strong citations per cohort threshold and decide whether the “main” threshold should be 14 days overall or cohort-specific.  
+> [TODO] Decide whether to include a “very long stay” category (e.g., ≥ 21 or ≥ 28 days) if the demo cohort contains outliers.
+
+---
+
+## 7) Risks + Contingencies
+- **Risk: too few cases per subgroup** → collapse buckets (e.g., neuro vs non-neuro) or focus on descriptive stats only.
+- **Risk: event-table sparsity** blocks early-window features → fallback to diagnoses/procedures + basic timing features.
+- **Risk: measurement bias** (sicker patients have more data) → explicitly report measurement counts; use as covariate or caveat.
+- **Risk: leakage** from late-stay signals → enforce hard early-window cutoff (6h/12h/24h from ICU admit) and document.
+- **Risk: ambiguous readmissions** (planned vs unplanned) → acknowledge limitation; keep framing as “observed readmission” rather than preventable readmission.
 
 ---
 
 # Task 3 — Determine Data Mining Goals (technical translation)
 
-## 10) Data Mining Goals (draft)
-Given the chosen unit of analysis and outcomes, the technical goals are to:
+## 8) Data Mining Goals (draft)
+Given the unit of analysis and definitions above:
 
-- Build a reliable ICU-stay timeline dataset from admissions + icustays + transfers (and selectively enrich with event data where feasible).
-- Quantify and visualize outcome distributions (LOS; mortality if feasible) and examine whether outcomes differ meaningfully by cohort/pathway grouping.
-- Prototype “early window” features (using events within a cutoff window after ICU admit) to support later modeling **without leakage**.
+1) Build a reliable ICU stay timeline dataset from admissions + icustays + transfers (correct grain; documented joins).  
+2) Quantify outcome distributions:
+   - ICU LOS overall + by cohort
+   - prolonged ICU LOS indicator (with sensitivity thresholds)
+   - hospital readmission rates (default 30-day) overall + by cohort
+3) Prototype **early-window** features (6/12/24h post-ICU admit) and test whether they are associated with:
+   - prolonged ICU stay
+   - hospital readmission
 
-> [TODO] finalize: primary outcome + unit of analysis before locking these goals.
-
-## 11) Data Mining Success Criteria (draft)
-- Reproducible cohort construction and join logic (documented keys + grain).
-- Clear missingness/coverage summary for event tables used in features.
-- If modeling is attempted: performance evaluation is honest and right-sized for N≈100 (likely simple baselines + interpretability).
+### Data Mining Success Criteria (draft)
+- Cohort logic is reproducible and validated.
+- Missingness and coverage are summarized for all tables used.
+- If modeling is attempted: use simple, interpretable baselines (logistic regression / regularized models), report uncertainty, and treat as exploratory due to N≈100.
 
 ---
 
 # Task 4 — Produce Project Plan (high-level)
 
-## 12) Project Plan (draft)
-**M3 (now):** finalize business framing + stakeholders/decisions + assumptions/risks + draft goals + project plan  
-**M4–M5:** data inventory + missingness; confirm feasible unit-of-analysis and outcomes; EDA supporting Assignment 1  
-**M6–M9:** data prep + baseline models (if feasible); otherwise strong descriptive/evaluation approach  
-**M10–M13:** evaluation narrative + limitations + “deployment” story (how this would be used in a real setting)  
-**M14:** wrap-up reflection and portfolio polish
+## 9) Project Plan (draft)
+**Module 3 (now):** finalize stakeholders/decisions, operational definitions (readmission + prolonged stay), and assumptions/risks; draft DS goals + plan  
+**Module 4–5:** data inventory + missingness; finalize cohort buckets; finalize outcome definitions and unit-of-analysis mapping  
+**Module 6–9:** data prep + descriptive subgroup comparisons; attempt simple early-window models if feasible  
+**Module 10–13:** evaluation narrative + limitations + “deployment” story (how ICU Director/QI would use this in real practice)  
+**Module 14:** final polish, reflection, and portfolio packaging
 
 ---
 
-## Notes / Parking Lot (from earlier brainstorm)
-- Open questions:
-  - Best unit of analysis: `stay_id` vs `hadm_id` vs `subject_id`
-  - Which primary outcomes are feasible with N≈100 (LOS vs mortality vs transfers/bounceback)?
-  - Cohort strategy: ICD-only vs hybrid (ICD + procedures + meds/labs); how many buckets can we support? email Dr. Gibney (UCI)
-  - Defensible early feature window: 6h vs 12h vs 24h (depends on timestamp density)
-  - How sparse are `chartevents`, `labevents`, `inputevents`, `procedureevents` in the demo subset?
-  - Stakeholder decision clarity: what exact decision(s) should the analysis inform?
-  - Workflow/tooling: Postgres-first for repeatable SQL EDA vs pandas-first until inventory is complete
+## Notes / What still needs refinement (explicit TODOs)
+1) Confirm readmission window (30-day default) and edge cases:
+   - planned vs unplanned readmissions (likely not separable)
+   - transfers vs discharge/re-admit logic
+2) Lock “prolonged ICU stay” threshold strategy:
+   - single global threshold vs cohort-specific definitions
+   - whether to add “very long stay” category
+3) Finalize cohort/pathway mapping:
+   - ICD-only vs ICD + procedure signals
+   - how many buckets the demo cohort can support without nonsense comparisons
+4) Choose workflow:
+   - pandas-first vs Postgres-first EDA (either is fine; document rationale)
+5) Decide which “why” hypotheses are testable with this demo subset:
+   - procedure wait proxies, ventilation proxies, culture/lab delay proxies, etc.
 
-- Things to look up later:
-  - ICD10 codes for ICU cohorts (Cardiac, Neuro, Trauma, Sepsis, Other)
-  - Verify cohort mental model
+
+Review
+https://www.physionet.org/content/mimiciv/2.0/?utm_source=chatgpt.com
+https://www.ejgm.co.uk/download/characteristics-and-outcomes-of-patients-withprolonged-stays-in-an-intensive-care-unit-7323.pdf
+https://www.frontiersin.org/journals/medicine/articles/10.3389/fmed.2024.1358205/full
+https://eventstreamml.readthedocs.io/en/dev/MIMIC_IV_tutorial/
