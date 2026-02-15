@@ -333,6 +333,9 @@ Over-claiming & Predictive patterns misread as causal & Bad operational decision
 % NOTES TO SELF (added):
 % - Pick ONE primary DS framing for Assignment 1 (even if you keep secondary options).
 % - Keep early-window anti-leakage rule as a hard constraint.
+\subsubsection*{Outcome definition (prolonged ICU stay)}
+Because there is no single universal cutoff, this project defines a prolonged ICU stay as an ICU LOS of at least 8 days (i.e., extending beyond the first week), consistent with prior ICU trauma literature that operationalizes prolonged stays using a one-week cutoff. \citep{Lefering2024ProlongedICUStay}
+
 
 \subsubsection*{Technical Problem Framing}
 The primary technical framing is a supervised learning problem focused on early risk stratification:
@@ -348,6 +351,8 @@ Alternative framings (e.g., LOS regression or time-to-event modeling) remain pos
     \item Establish baseline descriptive performance (simple interpretable models) before considering more complex methods.
     \item Quantify uncertainty and stability (sensitivity to cohort definitions and thresholds) as part of evaluation.
 \end{itemize}
+
+
 
 \subsubsection*{Technical Success Criteria (Provisional)}
 Given the small demo cohort, technical targets emphasize interpretability and stability over headline performance:
@@ -470,43 +475,45 @@ By 2026-02-16 (M5) & Assignment 1 finalized (BU + DU + visuals + quality summary
 % - Add file/table versions if you have them; if not, say ``as provided in demo distribution''.
 
 \subsubsection*{Primary Dataset Description}
-Primary dataset: the MIMIC-IV Clinical Database Demo (v2.2), an open-access subset of the MIMIC-IV clinical database \cite{PhysioNet-mimic-iv-demo-2.2,Goldberger2000PhysioNet}. The demo bundle is distributed as CSV files organized into \texttt{hosp/} and \texttt{icu/} modules, plus a cohort mapping file (\texttt{demo\_subject\_id.csv}) that defines the included population (100 distinct \texttt{subject\_id}s). In this project workspace, the raw files are stored under \texttt{data/raw/ICU\_Patients/data/raw}.
+Primary dataset: the MIMIC-IV Clinical Database Demo (v2.2), an open-access subset of the MIMIC-IV clinical database \cite{PhysioNet-mimic-iv-demo-2.2,Goldberger2000PhysioNet}. The demo dataset contains de-identified electronic health records for 100 ICU patients and is organized as a relational schema with hospital-wide (\t\texttt{hosp}) and ICU-specific (\t\texttt{icu}) modules. Tables represent patients, admissions, ICU stays, transfers, diagnoses, laboratory results, charted observations, and (where present in the demo subset) intervention/procedure records. The dataset is used here to validate data feasibility, confirm relational join logic, and support exploratory summaries relevant to ICU outcomes and resource utilization.
 
-For reproducibility, a local file inventory (names, sizes, and modified timestamps) and checksums were captured after download. All clinical CSV files in the bundle share an upstream modified timestamp of \textbf{2023-01-09 08:43} (per local metadata), with accompanying documentation files (\texttt{README.txt}, \texttt{LICENSE.txt}, and \texttt{SHA256SUMS.txt}). In addition to the vendor-provided checksum file (\texttt{SHA256SUMS.txt}), a local checksum manifest (\texttt{SHA256SUMS\_local\_generated.txt}, generated \textbf{2026-02-15}) was produced to lock the exact file versions used in this analysis.
-
-To support exploratory SQL profiling and reproducible transforms, the CSVs were loaded into a local PostgreSQL database named \texttt{mimic\_demo}. The resulting database footprint is approximately \textbf{185 MB}.
 \subsubsection*{Additional Data Sources}
 No supplementary datasets are included in scope for this phase. This is a deliberate privacy and scope-control choice: external enrichment could introduce linkage risk and distract from feasibility validation. Supporting materials include dataset documentation and course CRISP-DM guidance used for interpretation and planning.
 Key data characteristics relevant to analysis include patient-level date shifting that preserves within-patient intervals, synthetic identifiers, shifted representation of ages over 89 years, exclusion of free-text clinical notes, and the possibility of empty or sparse tables due to the 100-patient subset \cite{PhysioNet-mimic-iv-demo-2.2}.
 
 \subsubsection*{Data Collection Methodology}
-Data was obtained as a static demo distribution and loaded into a local relational database. The initial methodology is confirmatory: validate table presence, count records, confirm key relationships, identify join routes, and profile coverage for early-window feature extraction.
+Data was obtained as a provided demo distribution and loaded into a local relational database. The initial methodology is confirmatory: validate table presence, count records, confirm key relationships, identify join routes, and profile coverage/missingness for early-window feature extraction.
 
-Because the demo CSVs were loaded into PostgreSQL with minimal transformation, some identifier columns may include empty-string placeholders; profiling queries therefore use \texttt{NULLIF(col,'')} to treat empty strings as missing where appropriate. The exact SQL used for these inventory checks (including captured outputs) is saved as \texttt{sql/data\_description\_queries.sql} in the project repository.
 \begin{table}[H]
 \centering
-\caption{Dataset Inventory (Update With Measured Counts)}
+
 \label{tab:data_inventory}
-\begin{tabular}{p{3.2cm} p{2.0cm} p{2.0cm} p{2.6cm} p{3.6cm}}
+
+\begin{tabular}{p{4.4cm} p{3.0cm} p{3.5cm} p{1.5cm} p{2.8cm}}
+
 \toprule
-\textbf{Dataset/Table} & \textbf{Format} & \textbf{Rows} & \textbf{Time Span} & \textbf{Scope Notes} \\
+Dataset/Table & Format/Location & Description & Rows & Notes \\
 \midrule
-\texttt{patients} & table & 100 & Anchor years (de-identified) & Patient identifiers and demographics (gender, anchor age/year/group) and DOD (if present). \\
-\texttt{admissions} & table & 275 & Shifted timestamps (within-patient) & Admission-level context, ED in/out times, and administrative descriptors. \\
-\texttt{icustays} & table & 140 & 2110-04-11 to 2201-12-13 (shifted) & ICU stays with intime/outtime and LOS; primary analytic grain. \\
-\texttt{transfers} & table & 1,190 & Shifted timestamps (within-patient) & Patient movement across care units (location intervals). \\
-\texttt{labevents}, \texttt{d\_labitems} & table & 107,727 / 1,622 & Shifted timestamps (within-patient) & Lab results plus dictionary table for \texttt{itemid} interpretation. \\
-\texttt{chartevents}, \texttt{d\_items} & table & 668,862 / 4,014 & Shifted timestamps (within-patient) & Charted observations plus dictionary table for \texttt{itemid} interpretation. \\
-\texttt{diagnoses\_icd}, \texttt{d\_icd\_diagnoses} & table & 4,506 / 109,775 & N/A (code tables) & Diagnosis codes by admission plus ICD dictionary for code descriptions. \\
-\texttt{inputevents} & table & 20,404 & Shifted timestamps (within-patient) & Inputs/interventions (present in demo subset). \\
-\texttt{procedureevents} & table & 1,468 & Shifted timestamps (within-patient) & Procedures (present in demo subset). \\
+\texttt{mimic.demo\_subject\_id} & CSV $\rightarrow$ Postgres (\texttt{mimic}) & Demo cohort subject list used to subset the full MIMIC schema. & 100 & Demo extract. \\
+\texttt{hosp.patients} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Patient-level demographics (sex, anchor age/year, date of death). & 100 & De-identified via anchor-year scheme. \\
+\texttt{hosp.admissions} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Hospital admissions/encounters including ED registration/out times and disposition. & 275 & Grain: one row per \texttt{hadm\_id}. \\
+\texttt{icu.icustays} & CSV $\rightarrow$ Postgres (\texttt{icu}) & ICU stays nested within admissions (care unit, ICU in/out time, ICU LOS). & 140 & ICU window: 2110--2201 (shifted dates). \\
+\texttt{hosp.transfers} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Patient movement across care units. & 1{,}190 & Supplemental context. \\
+\texttt{icu.chartevents} & CSV $\rightarrow$ Postgres (\texttt{icu}) & High-frequency bedside charted observations (vitals, assessments) indexed by \texttt{itemid}. & 668{,}862 & Median 2{,}520.5 events/stay. \\
+\texttt{hosp.labevents} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Laboratory measurements with numeric/text values and units. & 107{,}727 & Median 178 labs/admission$^{\ast}$. \\
+\texttt{hosp.diagnoses\_icd} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & ICD-coded diagnoses per admission with ordering (\texttt{seq\_num}). & 4{,}506 & Median 14 dx/admission. \\
+\texttt{icu.d\_items} & CSV $\rightarrow$ Postgres (\texttt{icu}) & Dictionary for ICU charted variables (\texttt{itemid} label/category/unit). & 4{,}014 & Reference table. \\
+\texttt{hosp.d\_labitems} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Dictionary for lab tests (\texttt{itemid} label/fluid/category). & 1{,}622 & Reference table. \\
+\texttt{hosp.d\_icd\_diagnoses} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & ICD diagnosis dictionary (\texttt{icd\_code}, \texttt{icd\_version}, long title). & 109{,}775 & Code decoder. \\
 \bottomrule
+
 \end{tabular}
 \end{table}
 
 % ---------------------------------------------------------
 \subsection{Data Description}
-This section documents the internal structure of the MIMIC-IV Demo data used for this project, focusing on the subset of tables and variables required to (1) define ICU length-of-stay (LOS) and (2) construct early-window predictors from ICU charted observations and hospital labs.
+
+This section documents the core structure of the MIMIC-IV demo extract used for this capstone project, focusing on: (1) a practical data dictionary for the fields used in analysis, (2) the relationships between tables, (3) temporal coverage and granularity, and (4) the overall scale of the dataset.
 
 % VERBATIM (Assignment):
 % "2.2 Data Description (1.5-2 pages)"
@@ -521,109 +528,146 @@ This section documents the internal structure of the MIMIC-IV Demo data used for
 % NOTES TO SELF (added):
 % - Include a small ERD figure in Appendix A and reference it here.
 
-\subsubsection{Step 1: Focused data dictionary (core variables)}
+\subsubsection{Comprehensive Data Dictionary}
 
-The MIMIC-IV Demo dataset is a multi-table relational extract. For this project's objectives, the most important fields are the identifiers that define entities (patient, admission, ICU stay) and the timestamped event fields used to engineer early-window features. Table~\ref{tab:data_dictionary_core} documents the core variables used so far; additional fields will be documented as they become relevant during feature engineering.
+For this project, the ``spine'' of the dataset is the identifier chain \texttt{subject\_id} $\rightarrow$ \texttt{hadm\_id} $\rightarrow$ \texttt{stay\_id}. The project uses a small set of ``core'' tables (patients, admissions, ICU stays) and three high-value event tables (chart events, lab events, and diagnoses). Reference/dictionary tables (\texttt{d\_items}, \texttt{d\_labitems}, \texttt{d\_icd\_diagnoses}) provide human-readable labels for coded fields.
 
-\begin{longtable}{p{4.0cm} p{2.6cm} p{8.2cm}}
-\caption{Core variables used for data understanding and early EDA.}\label{tab:data_dictionary_core}\\
+\begin{longtable}{@{}p{0.26\textwidth} p{0.14\textwidth} p{0.41\textwidth} p{0.15\textwidth}@{}}
+\caption{Key variables used in this project (by table).}\\
+\toprule
+Variable & Type & Description & Notes/Encoding \\
+\midrule
+\endfirsthead
 
 \toprule
-\textbf{Variable (table.column)} & \textbf{Type} & \textbf{Meaning / notes} \\
+Variable & Type & Description & Notes/Encoding \\
 \midrule
 \endhead
-\texttt{hosp.patients.subject\_id} & identifier & De-identified patient identifier. Primary join key from patient $\rightarrow$ admission $\rightarrow$ ICU stay. \\
-\texttt{hosp.admissions.hadm\_id} & identifier & De-identified hospital admission identifier (one admission per row). Used to link diagnoses, procedures, and admission-level context. \\
-\texttt{icu.icustays.stay\_id} & identifier & De-identified ICU stay identifier (one ICU stay per row). Primary join key for ICU event tables (e.g., \texttt{icu.chartevents}). \\
-\texttt{icu.icustays.intime} & timestamp & ICU admission time (date-shifted). Used as ``time zero'' for early-window feature extraction. \\
-\texttt{icu.icustays.outtime} & timestamp & ICU discharge time (date-shifted). Together with \texttt{intime}, defines ICU LOS. \\
-\texttt{icu.chartevents.charttime} & timestamp & Time an ICU observation/vital/assessment was charted. Supports time-windowed aggregation (e.g., first 24 hours). \\
-\texttt{icu.chartevents.itemid} & coded integer & Concept identifier for the charted measurement. Joins to \texttt{icu.d\_items} to obtain labels and units. \\
-\texttt{icu.chartevents.valuenum} & numeric (nullable) & Numeric value of the charted measurement when applicable (e.g., heart rate). Units typically provided via \texttt{valueuom}. \\
-\texttt{hosp.labevents.itemid} & coded integer & Concept identifier for lab tests. Joins to \texttt{hosp.d\_labitems} for human-readable labels. \\
-\texttt{hosp.diagnoses\_icd.icd\_code} & categorical & ICD diagnosis code recorded for the admission. Multiple diagnoses may exist per \texttt{hadm\_id}. \\
+\midrule
+\multicolumn{4}{r}{\emph{Continued on next page}} \\
+\endfoot
 
 \bottomrule
+\endlastfoot
+
+\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.patients}} (grain: one row per patient)}\\
+\texttt{subject\_id} & integer & Patient identifier used across all tables. & PK \\
+\texttt{gender} & text & Administrative sex. & \{M,F\} \\
+\texttt{anchor\_age} & integer & Age at the anchor year used for de-identification. & shifted \\
+\texttt{anchor\_year} & integer & Anchor year used to shift timestamps for this patient. & shifted \\
+\texttt{anchor\_year\_group} & text & Coarser grouping of anchor years. & year bins \\
+\texttt{dod} & timestamp & Date of death (if available). & may be NULL \\
+
+\addlinespace
+\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.admissions}} (grain: one row per admission)}\\
+\texttt{hadm\_id} & integer & Hospital admission/encounter identifier. & PK \\
+\texttt{subject\_id} & integer & Patient identifier. & FK $\rightarrow$ \texttt{patients} \\
+\texttt{admittime} & timestamp & Admission start time. & shifted \\
+\texttt{dischtime} & timestamp & Discharge time. & shifted \\
+\texttt{deathtime} & timestamp & In-hospital death time (if applicable). & may be NULL \\
+\texttt{admission\_type} & text & Admission type/category. & categorical \\
+\texttt{edregtime} / \texttt{edouttime} & timestamp & ED registration and ED departure times. & may be NULL \\
+\texttt{hospital\_expire\_flag} & integer & In-hospital mortality indicator. & 0/1 \\
+
+\addlinespace
+\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.admissions}} (grain: one row per admission)}\\
+\texttt{hadm\_id} & integer & Hospital admission/encounter identifier. & PK \\
+\texttt{subject\_id} & integer & Patient identifier. & FK $\rightarrow$ \texttt{patients} \\
+\texttt{admittime} & timestamp & Admission start time. & shifted \\
+\texttt{dischtime} & timestamp & Discharge time. & shifted \\
+\texttt{deathtime} & timestamp & In-hospital death time (if applicable). & may be NULL \\
+\texttt{admission\_type} & text & Admission type/category. & categorical \\
+\texttt{edregtime} / \texttt{edouttime} & timestamp & ED registration and ED departure times. & may be NULL \\
+\texttt{hospital\_expire\_flag} & integer & In-hospital mortality indicator. & 0/1 \\
+
+
+\addlinespace
+\multicolumn{4}{@{}l}{\textbf{\texttt{icu.icustays}} (grain: one row per ICU stay)}\\
+\texttt{stay\_id} & integer & ICU stay identifier. & PK \\
+\texttt{hadm\_id} & integer & Admission identifier. & FK $\rightarrow$ \texttt{admissions} \\
+\texttt{subject\_id} & integer & Patient identifier. & FK $\rightarrow$ \texttt{patients} \\
+\texttt{first\_careunit} / \texttt{last\_careunit} & text & ICU unit at start/end of stay. & categorical \\
+\texttt{intime} / \texttt{outtime} & timestamp & ICU in/out times. & shifted \\
+\texttt{los} & numeric & ICU length-of-stay in days. & derived \\
+
+
+\addlinespace
+\multicolumn{4}{@{}l}{\textbf{\texttt{icu.chartevents}} (grain: one row per charted event)}\\
+\texttt{stay\_id} & integer & ICU stay identifier. & FK $\rightarrow$ \texttt{icustays} \\
+\texttt{itemid} & integer & Charted variable identifier. & FK $\rightarrow$ \texttt{d\_items} \\
+\texttt{charttime} & timestamp & Time the observation was charted. & shifted \\
+\texttt{valuenum} / \texttt{value} & numeric/text & Numeric and raw text representations of the measurement. & depends on item \\
+\texttt{valueuom} & text & Unit of measure for numeric values. & depends on item \\
+
+
+\addlinespace
+\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.labevents}} (grain: one row per lab measurement)}\\
+\texttt{labevent\_id} & integer & Lab event identifier. & PK \\
+\texttt{hadm\_id} & integer & Admission identifier. & FK $\rightarrow$ \texttt{admissions} \\
+\texttt{itemid} & integer & Lab test identifier. & FK $\rightarrow$ \texttt{d\_labitems} \\
+\texttt{charttime} / \texttt{storetime} & timestamp & Specimen time and store time (when available). & shifted \\
+\texttt{valuenum} / \texttt{value} & numeric/text & Numeric and raw text representations of the result. & depends on item \\
+\texttt{valueuom} & text & Unit of measure for numeric values. & depends on item \\
+\texttt{flag} & text & Abnormality flag (if present). & categorical \\
+
+\addlinespace
+\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.diagnoses\_icd}} (grain: one row per diagnosis per admission)}\\
+\texttt{hadm\_id} & integer & Admission identifier. & FK $\rightarrow$ \texttt{admissions} \\
+\texttt{seq\_num} & integer & Diagnosis ordering within an admission. & 1 = primary \\
+\texttt{icd\_code} & text & ICD diagnosis code. & join with version \\
+\texttt{icd\_version} & integer & ICD version indicator. & 9 or 10 \\
+
+\addlinespace
+\multicolumn{4}{@{}l}{\textbf{Reference tables}}\\
+\texttt{icu.d\_items.itemid} & integer & Charted variable identifier. & PK \\
+\texttt{icu.d\_items.label} & text & Human-readable charted variable name. & -- \\
+\texttt{hosp.d\_labitems.itemid} & integer & Lab test identifier. & PK \\
+\texttt{hosp.d\_labitems.label} & text & Human-readable lab test name. & -- \\
+\texttt{hosp.d\_icd\_diagnoses.(icd\_code, icd\_version)} & text/int & ICD code key for diagnosis dictionary. & composite key \\
+\texttt{hosp.d\_icd\_diagnoses.long\_title} & text & Human-readable diagnosis description. & -- \\
 \end{longtable}
 
-\noindent\textbf{Implementation note.} The demo extract was loaded into PostgreSQL using a ``raw/staging'' approach where columns are initially stored as text for ingestion simplicity, and cast to appropriate types (e.g., \texttt{::timestamp}) during analysis queries. This is consistent with a two-layer workflow (raw $\rightarrow$ curated/analytic).
+\subsubsection{Dataset Structure and Relationships}
 
-\subsubsection{Step 2: Dataset structure and relationships}
+Figure~\ref{fig:mimic_demo_core_erd-1} (Appendix~A) summarizes the core relationships among the tables used in this project. In practice, the relationships form a hierarchical ``visit'' structure:
 
-The demo database (\texttt{mimic\_demo}) is organized into relational schemas (notably \texttt{hosp} and \texttt{icu}). The primary entity flow for this project is:
-
-\begin{quote}
-Patients (\texttt{hosp.patients}, \textbf{100} rows) $\rightarrow$ Admissions (\texttt{hosp.admissions}, \textbf{275} rows) $\rightarrow$ ICU stays (\texttt{icu.icustays}, \textbf{140} rows).
-\end{quote}
-
-Event tables then link to the admission or ICU-stay grain:
 
 \begin{itemize}
-  \item \texttt{icu.chartevents} contains time-stamped ICU observations at high volume (\textbf{668{,}862} rows), typically joined on \texttt{stay\_id}.
-  \item \texttt{hosp.labevents} contains lab results (\textbf{107{,}727} rows), typically joined on \texttt{hadm\_id} and/or \texttt{subject\_id} depending on the analysis.
-  \item \texttt{hosp.diagnoses\_icd} contains diagnosis codes (\textbf{4{,}506} rows), many-to-one with \texttt{hadm\_id}.
-  \item \texttt{hosp.transfers} contains location transfer events (\textbf{1{,}190} rows) useful for building within-admission timelines.
+  \item \textbf{Patients $\rightarrow$ Admissions:} One patient (\texttt{subject\_id}) can have many admissions (\texttt{hadm\_id}). In this demo extract, the admissions-per-patient distribution is: min = 1, median = 1, max = 20 (100 patients).
+  \item \textbf{Admissions $\rightarrow$ ICU stays:} One admission can contain multiple ICU stays (\texttt{stay\_id}). Among the 128 admissions with an ICU stay, stays-per-admission is: min = 1, median = 1, max = 4.
+  \item \textbf{Admissions $\rightarrow$ Diagnoses and Labs:} Diagnoses and labs are stored as event-like tables keyed by \texttt{hadm\_id}. Diagnoses-per-admission is: min = 2, median = 14, max = 39 (275 admissions). For labs, among admissions with at least one lab event (252 admissions), labs-per-admission is: min = 8, median = 178, max = 2{,}538.
+  \item \textbf{ICU stays $\rightarrow$ Chart events:} High-frequency charted observations are keyed by \texttt{stay\_id}. Chart-events-per-stay is: min = 35, median = 2{,}520.5, max = 37{,}061 (140 ICU stays).
+
 \end{itemize}
 
 
-A basic referential-integrity check confirmed that every ICU stay in \texttt{icu.icustays} has a matching hospital admission via \texttt{hadm\_id} (140/140 matched; 0 missing).
-
-In addition, two distribution checks were prepared to characterize cohort complexity and event density: (1) admissions per patient, and (2) chart events per ICU stay (min/median/max). These values will guide aggregation choices (e.g., whether to summarize measurements per stay or stratify by repeat admissions) and will be recorded in the report once validated. 
+To reduce ambiguity when generating the ERD, explicit PK/FK constraints were added in the local Postgres instance and validated using ``orphan'' checks (e.g., every \texttt{admissions.subject\_id} exists in \texttt{patients.subject\_id}). No orphaned records were observed for the core relationships used above.
 
 
-\subsubsection{Step 3: Temporal coverage and granularity}
-The MIMIC-IV dataset is de-identified; date/time fields are shifted, which makes \emph{absolute} calendar dates (e.g., year 2110) uninterpretable for real-world timing. However, \emph{relative} timing and durations within a stay remain meaningful for LOS calculations and early-window feature extraction.
 
-For \texttt{icu.icustays}, the observed time range was:
+\subsubsection{Temporal Coverage and Granularity}
+
+MIMIC timestamps are de-identified using a date-shifting approach; absolute calendar dates are not meaningful, but within-patient and within-encounter time intervals are preserved. For this demo extract:
+
 
 \begin{itemize}
-  \item Minimum \texttt{intime}: 2110-04-11 15:52:22
-  \item Maximum \texttt{outtime}: 2201-12-13 18:29:00
+  \item \textbf{ICU window:} ICU stays (\texttt{icu.icustays}) span from 2110-04-11 to 2201-12-13 using \texttt{intime} and \texttt{outtime}.
+  \item \textbf{ICU LOS distribution:} ICU length-of-stay ranges from 00:34:10 to 20 days 12:41:18, with a median of 2 days 03:43:20 (mean 3 days 16:18:18; 90th percentile 8 days 20:39:07).
+  \item \textbf{Event granularity:} \texttt{chartevents} and \texttt{labevents} are event-based tables with timestamped records (\texttt{charttime}; and \texttt{storetime} when available). The number of events per stay/admission varies widely, so downstream feature engineering must explicitly choose aggregation windows (e.g., first 6 hours, first 24 hours).
+
 \end{itemize}
 
-ICU LOS (computed as \texttt{outtime}--\texttt{intime}) summary statistics are shown in Table~\ref{tab:icu_los_summary}.
+\subsubsection{Data Volume and Scale}
 
-\begin{table}[H]
-\centering
-\caption{ICU length-of-stay (LOS) summary for \texttt{icu.icustays} (n=140).}
-\label{tab:icu_los_summary}
-\begin{tabular}{l r}
-\toprule
-Statistic & Value \\
-\midrule
-Minimum LOS & 00:34:10 \\
-Median LOS & 2 days 03:43:20 \\
-Mean LOS & 3 days 16:18:18 \\
-90th percentile LOS & 8 days 20:39:08 \\
-Maximum LOS & 20 days 12:41:18 \\
-\bottomrule
-\end{tabular}
-\end{table}
+This project uses the MIMIC-IV demo extract, which is intentionally small compared to the full MIMIC-IV release but still exhibits realistic ``wide + deep'' clinical data characteristics (many event records per encounter). In the local Postgres database, the footprint of the loaded demo dataset is \textbf{185 MB}. The core fact tables are dominated by event volumes:
 
-\subsubsection{Step 4: Data volume and scale}
 
-Although the demo cohort is small in terms of patients and stays, it includes realistically large event volumes. Table~\ref{tab:data_volume_key_tables} summarizes the key table sizes and a few derived ``scale'' indicators.
+\begin{itemize}
+  \item \textbf{Largest tables:} \texttt{icu.chartevents} (668{,}862 rows; \texttt{chartevents.csv} $\approx$ 64.7 MB) and \texttt{hosp.labevents} (107{,}727 rows; \texttt{labevents.csv} $\approx$ 12.3 MB).
+  \item \textbf{Smaller ``spine'' tables:} \texttt{hosp.patients} (100), \texttt{hosp.admissions} (275), and \texttt{icu.icustays} (140).
+  \item \textbf{Modeling implication:} Even in this small demo, naive joins of event tables can explode row counts. The project will therefore use encounter-level modeling datasets created via aggregation (e.g., summary statistics over early time windows) rather than modeling directly at the event grain.
+\end{itemize}
 
-\begin{table}[H]
-\centering
-\caption{Data volume in key tables and derived scale indicators.}
-\label{tab:data_volume_key_tables}
-\begin{tabular}{p{4.0cm} r p{8.0cm}}
-\toprule
-\textbf{Table} & \textbf{Rows} & \textbf{Scale implication} \\
-\midrule
-\texttt{hosp.patients} & 100 & Small cohort; patient-level features are easy to compute in memory \\
-\texttt{hosp.admissions} & 275 & Average $\approx$2.75 admissions per patient (population not sampled representatively) \\
-\texttt{icu.icustays} & 140 & About 0.51 ICU stays per admission in this demo extract \\
-\texttt{icu.chartevents} & 668{,}862 & Dominant table; $\approx$4{,}778 charted events per ICU stay on average. Early-window filtering and item selection will be critical for efficient feature engineering \\
-\texttt{hosp.labevents} & 107{,}727 & $\approx$392 lab events per admission on average; typically aggregated to reduce dimensionality \\
-\texttt{hosp.diagnoses\_icd} & 4{,}506 & $\approx$16.4 diagnosis rows per admission; requires careful handling to avoid duplicate rows when joining \\
-\texttt{hosp.transfers} & 1{,}190 & $\approx$4.33 transfer events per admission; supports timeline-based features \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-From a computational standpoint, all tables comfortably fit on a standard laptop, but \texttt{icu.chartevents} will dominate query time. Practical strategies include: (1) restricting to clinically relevant \texttt{itemid}s, (2) filtering to an ``early window'' (e.g., first 24 hours), and (3) aggregating to per-stay features prior to modeling.
 
 % ---------------------------------------------------------
 \subsection{Data Exploration Report (Preliminary)}
@@ -774,6 +818,20 @@ I used generative AI as a writing and workflow assistant (outlining, drafting no
 % NOTES TO SELF:
 % - Put ERD (figure) here and reference it in Data Description.
 % - Put additional profiling tables here (e.g., missingness tables by variable).
+\subsection*{A.1 Entity Relationship Diagram}
+
+\begin{figure}[H]
+\centering
+\includegraphics[height=0.75\textheight, keepaspectratio]{figures/mimic_demo_core_erd-1.png}
+\caption{Entity-relationship diagram for the core MIMIC-IV demo tables used in this project.}
+\label{fig:mimic_demo_core_erd-1}
+\end{figure}
+
+\noindent\emph{Note:} The diagram was generated in DBeaver after adding explicit primary/foreign key constraints in the local Postgres instance.
+
+\clearpage
+
+
 
 \section*{Appendix B: Minimal Illustrative Code Snippets}
 \addcontentsline{toc}{section}{Appendix B: Minimal Illustrative Code Snippets}

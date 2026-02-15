@@ -137,19 +137,45 @@ Purpose: Record key project decisions (what, why, tradeoffs) so future-me (and g
   - If EDA shows one bucket dominates or buckets collapse (e.g., too few cases), forcing fewer buckets or a pooled analysis with cohort indicators.
 
 ---
-## D008 — Profiling environment: load demo CSVs into Postgres using schema-on-read
-- **Decision:** Load the demo CSV bundle into a local PostgreSQL database (`mimic_demo`) using a minimal, preservation-first approach (raw values retained; typing/derivations handled downstream).
-- **Date:** 2026-02-03
-- **Options considered:**
-  - Query CSVs directly with Python/R (pandas/data.table) for all profiling
-  - SQLite for lightweight SQL profiling
-  - PostgreSQL for profiling + later reproducible transforms
-- **Rationale:**
-  - SQL-first profiling is fast for counting, cardinalities, joins, and temporal summaries.
-  - Postgres aligns with a reproducible pipeline mindset (views, incremental transforms) and keeps the workflow close to real-world DS/analytics environments.
-  - Schema-on-read avoids premature typing decisions and surfaces de-identification quirks explicitly (e.g., empty strings).
-- **Tradeoffs / risks:**
-  - Raw TEXT storage increases DB size and requires explicit casting/cleaning in analytic queries.
-  - More setup overhead than a pure notebook workflow.
+# D008 — Establish core entity grains and relationship constraints (MIMIC-IV Demo)
+
+**Date:** 2026-02-15  \
+**Decision:** Treat \`hosp.patients\` (\`subject_id\`), \`hosp.admissions\` (\`hadm_id\`), and \`icu.icustays\` (\`stay_id\`) as the three anchor entities, and enforce their relationships with explicit PK/FK constraints after normalizing empty strings to NULL.
+
+**Rationale:** Empirical validation confirmed unique candidate primary keys (no duplicates) and zero orphan rows along the primary join paths. Adding constraints will (1) prevent accidental join-induced duplication during analysis and (2) allow DBeaver to generate a correct ERD automatically.
+
+**Implications:** Event tables (e.g., \`icu.chartevents\`, \`hosp.labevents\`, \`hosp.diagnoses_icd\`) will remain one-to-many relative to the anchors and should be aggregated or filtered (e.g., early-window) before modeling.
+
+**Status:** Approved (to implement in SQL after review).
+
+---
+## D009 — Use numbered SQL scripts for reproducible execution order
+- **Date:** 2026-02-15
+- **Decision:** Store SQL exploration artifacts under `data/sql/` with a numeric prefix (01/02/03/...) to reflect the order they are intended to be run.
+- **Rationale:** Keeps the workflow understandable as the number of queries grows and makes it easier for a reviewer to replay the work end-to-end.
+- **Implications:** Requires renaming files rather than 'latest.sql'; commit history preserves change tracking.
+
+--- 
+## D010 — Constrain the initial ERD to a core subset of tables
+- **Date:** 2026-02-15
+- **Decision:** Build the first ERD around core entities and high-value event tables used for early feature engineering: `patients`, `admissions`, `icustays`, `chartevents`, `labevents`, `diagnoses_icd`, plus lookup tables (`d_items`, `d_labitems`, `d_icd_diagnoses`).
+- **Rationale:** Full MIMIC-IV schemas are too large for a readable diagram; a focused ERD supports clearer unit-of-analysis decisions and faster EDA iteration.
+- **Implications:** Additional tables can be added later as needed (e.g., meds, microbiology).
+
+---
+## D011 — Add PK/FK constraints to the local Postgres demo schema
+- **Date:** 2026-02-15
+- **Decision:** Apply explicit primary key and foreign key constraints in the local database based on relationship validation queries.
+- **Rationale:** Constraints provide hard rails for join correctness, enable ERD tooling (DBeaver), and reduce accidental duplicate joins during analysis.
+- **Implications:** Constraints reflect demo-extract consistency and may need adjustment if/when switching to the full dataset.
+
+---
+## D012 — Place the ERD in the report appendix and reference it from Data Description
+- **Date:** 2026-02-15
+- **Decision:** Embed the ERD as Appendix A and reference it from the Data Description/Relationships narrative.
+- **Rationale:** The ERD is useful for transparency and reviewer context but too detailed to live in the main flow of the report.
+- **Implications:** Keep the figure export stable (file name + path) and update the appendix if the core table set changes.
+
+
 
 

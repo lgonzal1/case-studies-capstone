@@ -1,17 +1,18 @@
 # 00 — Master Tracker (Case Studies in Data Science)
 
 ## Current status
-- Current module: M5 (Data Understanding — Data Description Steps 1–4 completed; EDA next)
+- Current module: M5 (Data Understanding artifacts complete; ready to assemble Assignment 1 DU sections)
 - Current objective (1 sentence):
-  Lock a defensible QI-style story by finalizing unit-of-analysis + outcome definitions (readmission + prolonged ICU stay), then validate feasibility with a quick inventory pass before deeper modeling.
-- Next deadline: Assignment 1 due 2026-02-16
+  Finalize outcome + cohort definitions, add 1–2 lightweight EDA/data-quality artifacts, and package the BU+DU report for Assignment 1 submission.
+- Next deadline: 2026-02-16 Assignment 1 due (M5)
 
 - Risk level: Medium (mostly due to N≈100 + sparsity + subgroup sizes)
 - Next 3 actions:
-1. Compile `main.tex` (with bibtex) to confirm citations resolve and the Data Understanding section is within target length.
-2. Start `Data Exploration` (EDA): missingness + basic distributions for ICU LOS and candidate early-window predictors.
-3. Draft the Data Exploration subsection text and integrate figures/tables (if allowed) in the report.
+  1. Run SQL-first EDA for candidate outcomes (ICU LOS threshold + readmission feasibility) and summarize in the report.
+  2. Data quality summary: missingness + timestamp consistency for core tables (admissions/icustays/chartevents/labevents).
+  3. Draft outcome + cohort definitions (unit of analysis + inclusion/exclusion) and log decisions.
 
+---
 ## Course map (CRISP-DM alignment)
 - Unit 1 (M1–M5): Business Understanding + Data Understanding → **Assignment 1** DUE 2026-02-16
 - Unit 2 (M6–M9): Data Preparation + Modeling → **Assignment 2**
@@ -47,8 +48,10 @@
 ### M4 — Data Understanding (Part 1)
 - [x] Load demo dataset into Postgres (local)
 - [x] Confirm keys, grains, and join routes (subject_id / hadm_id / stay_id)
-- [x] Table inventory: rowcounts + coverage (events density; missingness profiling deferred to EDA)
-- [ ] ERD v1 drafted (dbdiagram.io or similar)
+- [x] Table inventory: rowcounts + coverage (event density summaries; initial missingness checks queued)
+- [x] ERD v1 drafted (DBeaver) + exported to PNG
+- [x] Apply PK/FK constraints in local schema for validation + tooling (DBeaver ERD)
+- [x] Save SQL artifacts in `data/sql/` (01 data description, 02 relationship discovery/validation, 03 constraints)
 
 ### M5 — Data Understanding (Part 2) + **Assignment 1 due**
 - [ ] Assignment 1 report assembled (BU + DU sections)
