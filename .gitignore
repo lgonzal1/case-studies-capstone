@@ -24,3 +24,7 @@ data/processed/
 
 # Keep placeholder files
 !.gitkeep
+
+# Generated report artifact folders (Quarto / RMarkdown / HTML exports)
+*_files/
+reports/assignment_1/main_files/
