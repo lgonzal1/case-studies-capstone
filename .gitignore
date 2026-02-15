@@ -28,3 +28,6 @@ data/processed/
 # Generated report artifact folders (Quarto / RMarkdown / HTML exports)
 *_files/
 reports/assignment_1/main_files/
+
+# generated report artifacts
+reports/assignment_1/main_files/
