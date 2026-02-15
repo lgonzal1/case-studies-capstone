@@ -1,18 +1,16 @@
 # 00 — Master Tracker (Case Studies in Data Science)
 
 ## Current status
-- Current module: M3 (process diary submitted; moving into M4 next)
+- Current module: M5 (Data Understanding — Data Description Steps 1–4 completed; EDA next)
 - Current objective (1 sentence):
   Lock a defensible QI-style story by finalizing unit-of-analysis + outcome definitions (readmission + prolonged ICU stay), then validate feasibility with a quick inventory pass before deeper modeling.
-- Next deadline: 2026-02-09 M4 Data Understanding Quiz
+- Next deadline: Assignment 1 due 2026-02-16
 
 - Risk level: Medium (mostly due to N≈100 + sparsity + subgroup sizes)
 - Next 3 actions:
-  1. Update repo artifacts: master tracker + decision log + assumptions/risks refresh (commit + push)
-  2. Load MIMIC-IV demo tables into local Postgres for SQL-first exploration (rowcounts, keys, join routes)
-  3. Feasibility pass + ERD: confirm readmission counts + prolonged ICU stay distribution; draft ER diagram to stabilize the “schema mental model”
-
----
+1. Compile `main.tex` (with bibtex) to confirm citations resolve and the Data Understanding section is within target length.
+2. Start `Data Exploration` (EDA): missingness + basic distributions for ICU LOS and candidate early-window predictors.
+3. Draft the Data Exploration subsection text and integrate figures/tables (if allowed) in the report.
 
 ## Course map (CRISP-DM alignment)
 - Unit 1 (M1–M5): Business Understanding + Data Understanding → **Assignment 1** DUE 2026-02-16
@@ -47,9 +45,9 @@
 
 
 ### M4 — Data Understanding (Part 1)
-- [ ] Load demo dataset into Postgres (local)
-- [ ] Confirm keys, grains, and join routes (subject_id / hadm_id / stay_id)
-- [ ] Table inventory: rowcounts + coverage (events density, missingness patterns)
+- [x] Load demo dataset into Postgres (local)
+- [x] Confirm keys, grains, and join routes (subject_id / hadm_id / stay_id)
+- [x] Table inventory: rowcounts + coverage (events density; missingness profiling deferred to EDA)
 - [ ] ERD v1 drafted (dbdiagram.io or similar)
 
 ### M5 — Data Understanding (Part 2) + **Assignment 1 due**

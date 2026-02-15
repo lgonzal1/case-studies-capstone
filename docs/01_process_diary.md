@@ -74,3 +74,30 @@
 - Run a quick table inventory + key counts to confirm grain/joins and feasibility.
 - Draft Background + Business Objectives + Success Criteria sections in a first-pass report outline.
 
+## Entry — 2026-02-03 (Data Understanding: Data Inventory + Data Description profiling)
+
+### What I did
+- Loaded the MIMIC-IV demo CSV bundle into a local PostgreSQL database (`mimic_demo`) using `hosp` and `icu` schemas.
+- Ran initial profiling queries to capture:
+  - Database size footprint
+  - Row counts for key tables
+  - Cardinalities (distinct `subject_id`, `hadm_id`, `stay_id`)
+  - Basic temporal coverage for ICU stays (`intime`/`outtime`)
+  - Distribution summaries for admissions-per-patient and charted-events-per-stay
+  - ICU LOS summary statistics
+- Captured file provenance details:
+  - Local file inventory with upstream modified timestamps (all clinical CSVs: 2023-01-09 08:43)
+  - SHA-256 checksums (including a locally generated manifest)
+
+### Key outputs captured
+- DB footprint: ~185 MB (`pg_database_size('mimic_demo')`).
+- Core table sizes: patients (100), admissions (275), icustays (140), diagnoses_icd (4,506), labevents (107,727), chartevents (668,862).
+- ICU timestamp span (date-shifted): 2110-04-11 15:52:22 to 2201-12-13 18:29:00.
+- ICU LOS (outtime - intime): min 00:34:10; median 2 days 03:43:20; mean 3 days 16:18:18; p90 8 days 20:39:08; max 20 days 12:41:18.
+
+### Notes / gotchas
+- The initial Postgres load preserved raw values (schema-on-read). Some identifier fields can contain empty strings, so profiling SQL used `NULLIF(col,'')`.
+
+### Where this feeds the report
+- Updated the **Data Inventory** table with measured row counts and scope notes.
+- Completed **Data Description** Steps 1–4: key variables dictionary, relationships/join routes, temporal constraint, and volume/scale narrative.

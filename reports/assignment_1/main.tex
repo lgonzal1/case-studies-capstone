@@ -470,16 +470,19 @@ By 2026-02-16 (M5) & Assignment 1 finalized (BU + DU + visuals + quality summary
 % - Add file/table versions if you have them; if not, say ``as provided in demo distribution''.
 
 \subsubsection*{Primary Dataset Description}
-Primary dataset: the MIMIC-IV Clinical Database Demo (v2.2), an open-access subset of the MIMIC-IV clinical database \cite{PhysioNet-mimic-iv-demo-2.2,Goldberger2000PhysioNet}. The demo dataset contains de-identified electronic health records for 100 ICU patients and is organized as a relational schema with hospital-wide (\texttt{hosp}) and ICU-specific (\texttt{icu}) modules. Tables represent patients, admissions, ICU stays, transfers, diagnoses, laboratory results, charted observations, and (where present in the demo subset) intervention/procedure records. The dataset is used here to validate data feasibility, confirm relational join logic, and support exploratory summaries relevant to ICU outcomes and resource utilization.
+Primary dataset: the MIMIC-IV Clinical Database Demo (v2.2), an open-access subset of the MIMIC-IV clinical database \cite{PhysioNet-mimic-iv-demo-2.2,Goldberger2000PhysioNet}. The demo bundle is distributed as CSV files organized into \texttt{hosp/} and \texttt{icu/} modules, plus a cohort mapping file (\texttt{demo\_subject\_id.csv}) that defines the included population (100 distinct \texttt{subject\_id}s). In this project workspace, the raw files are stored under \texttt{data/raw/ICU\_Patients/data/raw}.
 
+For reproducibility, a local file inventory (names, sizes, and modified timestamps) and checksums were captured after download. All clinical CSV files in the bundle share an upstream modified timestamp of \textbf{2023-01-09 08:43} (per local metadata), with accompanying documentation files (\texttt{README.txt}, \texttt{LICENSE.txt}, and \texttt{SHA256SUMS.txt}). In addition to the vendor-provided checksum file (\texttt{SHA256SUMS.txt}), a local checksum manifest (\texttt{SHA256SUMS\_local\_generated.txt}, generated \textbf{2026-02-15}) was produced to lock the exact file versions used in this analysis.
 
+To support exploratory SQL profiling and reproducible transforms, the CSVs were loaded into a local PostgreSQL database named \texttt{mimic\_demo}. The resulting database footprint is approximately \textbf{185 MB}.
 \subsubsection*{Additional Data Sources}
 No supplementary datasets are included in scope for this phase. This is a deliberate privacy and scope-control choice: external enrichment could introduce linkage risk and distract from feasibility validation. Supporting materials include dataset documentation and course CRISP-DM guidance used for interpretation and planning.
 Key data characteristics relevant to analysis include patient-level date shifting that preserves within-patient intervals, synthetic identifiers, shifted representation of ages over 89 years, exclusion of free-text clinical notes, and the possibility of empty or sparse tables due to the 100-patient subset \cite{PhysioNet-mimic-iv-demo-2.2}.
 
 \subsubsection*{Data Collection Methodology}
-Data was obtained as a provided demo distribution and loaded into a local relational database. The initial methodology is confirmatory: validate table presence, count records, confirm key relationships, identify join routes, and profile coverage/missingness for early-window feature extraction.
+Data was obtained as a static demo distribution and loaded into a local relational database. The initial methodology is confirmatory: validate table presence, count records, confirm key relationships, identify join routes, and profile coverage for early-window feature extraction.
 
+Because the demo CSVs were loaded into PostgreSQL with minimal transformation, some identifier columns may include empty-string placeholders; profiling queries therefore use \texttt{NULLIF(col,'')} to treat empty strings as missing where appropriate. The exact SQL used for these inventory checks (including captured outputs) is saved as \texttt{sql/data\_description\_queries.sql} in the project repository.
 \begin{table}[H]
 \centering
 \caption{Dataset Inventory (Update With Measured Counts)}
@@ -488,15 +491,15 @@ Data was obtained as a provided demo distribution and loaded into a local relati
 \toprule
 \textbf{Dataset/Table} & \textbf{Format} & \textbf{Rows} & \textbf{Time Span} & \textbf{Scope Notes} \\
 \midrule
-\texttt{patients} & table & TBD & TBD & Patient identifiers and demographics \\
-\texttt{admissions} & table & TBD & TBD & Admission-level context and timestamps \\
-\texttt{icustays} & table & TBD & TBD & ICU stays (candidate grain) \\
-\texttt{transfers} & table & TBD & TBD & Patient movement across care units \\
-\texttt{labevents}, \texttt{d\_labitems} & table & TBD & TBD & Lab results + dictionary \\
-\texttt{chartevents}, \texttt{d\_items} & table & TBD & TBD & Charted observations + dictionary \\
-\texttt{diagnoses\_icd}, \texttt{d\_icd\_diagnoses} & table & TBD & TBD & Diagnosis codes + dictionary \\
-\texttt{inputevents} & table & TBD & TBD & Inputs/interventions (if present in demo) \\
-\texttt{procedureevents} & table & TBD & TBD & Procedures (if present in demo) \\
+\texttt{patients} & table & 100 & Anchor years (de-identified) & Patient identifiers and demographics (gender, anchor age/year/group) and DOD (if present). \\
+\texttt{admissions} & table & 275 & Shifted timestamps (within-patient) & Admission-level context, ED in/out times, and administrative descriptors. \\
+\texttt{icustays} & table & 140 & 2110-04-11 to 2201-12-13 (shifted) & ICU stays with intime/outtime and LOS; primary analytic grain. \\
+\texttt{transfers} & table & 1,190 & Shifted timestamps (within-patient) & Patient movement across care units (location intervals). \\
+\texttt{labevents}, \texttt{d\_labitems} & table & 107,727 / 1,622 & Shifted timestamps (within-patient) & Lab results plus dictionary table for \texttt{itemid} interpretation. \\
+\texttt{chartevents}, \texttt{d\_items} & table & 668,862 / 4,014 & Shifted timestamps (within-patient) & Charted observations plus dictionary table for \texttt{itemid} interpretation. \\
+\texttt{diagnoses\_icd}, \texttt{d\_icd\_diagnoses} & table & 4,506 / 109,775 & N/A (code tables) & Diagnosis codes by admission plus ICD dictionary for code descriptions. \\
+\texttt{inputevents} & table & 20,404 & Shifted timestamps (within-patient) & Inputs/interventions (present in demo subset). \\
+\texttt{procedureevents} & table & 1,468 & Shifted timestamps (within-patient) & Procedures (present in demo subset). \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -529,13 +532,27 @@ Data was obtained as a provided demo distribution and loaded into a local relati
 \textbf{Variable} & \textbf{Type} & \textbf{Range/Values} & \textbf{Definition / Planned Use} \\
 \midrule
 \endhead
-\texttt{subject\_id} & identifier & entity key & Patient identifier (patient grain) \\
-\texttt{hadm\_id} & identifier & entity key & Hospital admission identifier (admission grain) \\
-\texttt{stay\_id} & identifier & entity key & ICU stay identifier (ICU stay grain) \\
-ICU LOS (hours) & derived numeric & TBD & ICU admit-to-discharge duration; primary resource-use measure \\
-Prolonged ICU stay flag & derived binary & 0/1 & Primary outcome candidate; threshold pending justification \\
-Return-risk/readmission proxy & derived binary & 0/1 & Secondary outcome candidate; definition contingent on grain support \\
-Early-window labs/vitals & derived features & TBD & Candidate predictors from first 6--24h; profiled for missingness \\
+\texttt{subject\_id} & integer & 100 distinct & Patient identifier (links all tables; patient grain). \\
+\texttt{hadm\_id} & integer & 275 distinct & Hospital admission identifier (links \texttt{admissions}, \texttt{diagnoses\_icd}, \texttt{labevents}, \texttt{icustays}). \\
+\texttt{stay\_id} & integer & 140 distinct & ICU stay identifier (links ICU event tables such as \texttt{chartevents}; primary analytic grain). \\
+\texttt{gender} & categorical & \{M,F\} & Patient-recorded sex (patient-level). \\
+\texttt{anchor\_age} & integer & non-negative & De-identified age anchor for the patient (used instead of DOB). \\
+\texttt{anchor\_year} & integer & de-identified year & Patient-specific anchor year used for date shifting; supports within-patient temporal context. \\
+\texttt{admittime} & timestamp & shifted & Hospital admission time (date-shifted; usable for within-patient intervals). \\
+\texttt{dischtime} & timestamp & shifted & Hospital discharge time (date-shifted). \\
+\texttt{admission\_type} & categorical & text labels & Administrative admission type (e.g., EMERGENCY/ELECTIVE). \\
+\texttt{race} & categorical & text labels & Recorded race category (used cautiously; documentation and de-identification context). \\
+\texttt{intime} & timestamp & 2110--2201 (shifted) & ICU admission timestamp for a stay (within-stay timing preserved). \\
+\texttt{outtime} & timestamp & 2110--2201 (shifted) & ICU discharge timestamp for a stay. \\
+\texttt{los} & numeric & $\ge 0$ days & ICU length of stay as provided in \texttt{icustays} (validated against \texttt{outtime-intime}). \\
+\texttt{charttime} & timestamp & shifted & Event timestamp used in \texttt{labevents} and \texttt{chartevents}; supports early-window feature extraction. \\
+\texttt{itemid} & integer & dictionary key & Measurement/test identifier; joins to \texttt{d\_items} (ICU) or \texttt{d\_labitems} (labs). \\
+\texttt{valuenum} & numeric & varies & Parsed numeric value when available; used after unit/quality checks. \\
+\texttt{icd\_code} & categorical & ICD-9/10 codes & Diagnosis code associated with an admission; used for coarse cohort grouping. \\
+\texttt{icd\_version} & categorical & \{9,10\} & Indicates ICD version for \texttt{icd\_code}. \\
+ICU LOS (hours) & derived numeric & $\ge 0$ & Derived from \texttt{outtime-intime}; primary resource-use measure. \\
+Prolonged ICU stay flag & derived binary & 0/1 & Candidate outcome based on an explicit LOS threshold (to be justified). \\
+Early-window predictors & derived features & varies & Aggregated features from first 6--24 hours (labs/vitals/inputs) aligned by \texttt{stay\_id} and \texttt{charttime}. \\
 \bottomrule
 \end{longtable}
 

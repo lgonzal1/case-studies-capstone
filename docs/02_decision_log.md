@@ -135,3 +135,21 @@ Purpose: Record key project decisions (what, why, tradeoffs) so future-me (and g
 - **What would change my mind:**
   - If ICD or intervention fields are too incomplete to support consistent cohort assignment.
   - If EDA shows one bucket dominates or buckets collapse (e.g., too few cases), forcing fewer buckets or a pooled analysis with cohort indicators.
+
+---
+## D008 — Profiling environment: load demo CSVs into Postgres using schema-on-read
+- **Decision:** Load the demo CSV bundle into a local PostgreSQL database (`mimic_demo`) using a minimal, preservation-first approach (raw values retained; typing/derivations handled downstream).
+- **Date:** 2026-02-03
+- **Options considered:**
+  - Query CSVs directly with Python/R (pandas/data.table) for all profiling
+  - SQLite for lightweight SQL profiling
+  - PostgreSQL for profiling + later reproducible transforms
+- **Rationale:**
+  - SQL-first profiling is fast for counting, cardinalities, joins, and temporal summaries.
+  - Postgres aligns with a reproducible pipeline mindset (views, incremental transforms) and keeps the workflow close to real-world DS/analytics environments.
+  - Schema-on-read avoids premature typing decisions and surfaces de-identification quirks explicitly (e.g., empty strings).
+- **Tradeoffs / risks:**
+  - Raw TEXT storage increases DB size and requires explicit casting/cleaning in analytic queries.
+  - More setup overhead than a pure notebook workflow.
+
+
