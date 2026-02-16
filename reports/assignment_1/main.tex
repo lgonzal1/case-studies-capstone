@@ -26,7 +26,8 @@
 \usepackage{fancyhdr}
 \usepackage{lastpage}
 \usepackage{tabularx}
-\usepackage{ragged2e} % better ragged-right than \raggedright
+\usepackage{ragged2e}
+\usepackage[table]{xcolor}
 
 \newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
 
@@ -145,11 +146,13 @@ Regional Medical Center (RMC) is modeled (per the provided project scenario) as 
 
 
 \subsubsection*{Domain and Context Assessment}
-ICU care is a high-variance, high-cost environment characterized by heterogeneous patients, complex interventions, and uneven measurement processes. Operationally relevant outcomes (e.g., prolonged ICU stays, step-down delays, and returns to higher levels of care) are influenced by both clinical severity and system factors such as staffing, consult availability, bed management, and documentation practices. As a result, a credible analysis must address not only predictive performance but also interpretability, uncertainty, and responsible communication.
+ICU capacity is a constrained and resource-intensive service line, making throughput improvements a more practical lever than expanding bed capacity \cite{halpern2010_critical_care_costs}. Empirical evidence from a large teaching hospital indicates that periods of ICU capacity strain are associated with modestly shorter ICU length of stay (under half a day even in extreme scenarios) and earlier discharge processing, without worsening patient health status at ICU discharge \cite{kim2025_capacity_strain_icu}. 
+
+ICU care is a high-variance, high-complexity environment characterized by heterogeneous patients, complex interventions, and uneven measurement processes. Operationally relevant outcomes (e.g., prolonged ICU stays, step-down delays, and returns to higher levels of care) are influenced by both clinical severity and system factors such as staffing, consult availability, bed management, and documentation practices. As a result, a credible analysis must address not only predictive performance but also interpretability, uncertainty, and responsible communication.
+
 
 \subsubsection*{Operational ``Domain Reality'' (Why Early Visibility Matters)}
 In day-to-day ICU operations, care quality and throughput are tightly coupled to bed availability and timing. ICU leaders routinely manage competing demands: accepting new high-acuity patients (e.g., from the ED or operating room) while simultaneously creating safe capacity through step-down transfers and discharge coordination. When downstream beds (step-down or ward) are constrained, the ICU experiences ``exit block,'' where clinically ready patients remain in ICU-level beds, amplifying capacity pressure and delaying incoming critical admissions. Early warning about which patients are likely to become prolonged, resource-intensive stays helps teams prioritize consults, align staffing and rounding focus, anticipate specialty needs, and start discharge planning earlier (e.g., post-ICU placement, rehab needs) rather than reacting late in the stay.
-
 
 \subsubsection*{Problem Situation (Decision Need)}
 The working problem is operationally grounded: ICU leadership benefits from early visibility into which admissions are likely to become prolonged, resource-intensive stays so they can anticipate capacity constraints, coordinate downstream bed flow, and target early interventions or pathway reviews. A related concern is return-risk: some patients may cycle through higher acuity settings or return after discharge, and understanding those patterns requires careful unit-of-analysis definition and conservative interpretation. In the demo cohort, the immediate goal is feasibility validation (what can be measured reliably) rather than asserting hospital-specific effect sizes.
@@ -532,7 +535,7 @@ By 2026-02-16 (M5) & Assignment 1 finalized (BU + DU + visuals + quality summary
 % - Add file/table versions if you have them; if not, say ``as provided in demo distribution''.
 
 \subsubsection*{Primary Dataset Description}
-Primary dataset: the MIMIC-IV Clinical Database Demo (v2.2), an open-access subset of the MIMIC-IV clinical database \cite{PhysioNet-mimic-iv-demo-2.2,Goldberger2000PhysioNet}. The demo dataset contains de-identified electronic health records for 100 ICU patients and is organized as a relational schema with hospital-wide (\t\texttt{hosp}) and ICU-specific (\t\texttt{icu}) modules. Tables represent patients, admissions, ICU stays, transfers, diagnoses, laboratory results, charted observations, and (where present in the demo subset) intervention/procedure records. The dataset is used here to validate data feasibility, confirm relational join logic, and support exploratory summaries relevant to ICU outcomes and resource utilization.
+Primary dataset: the MIMIC-IV Clinical Database Demo (v2.2), an open-access subset of the MIMIC-IV clinical database \cite{PhysioNet-mimic-iv-demo-2.2,Goldberger2000PhysioNet}. The demo dataset contains de-identified electronic health records for 100 ICU patients and is organized as a relational schema with hospital-wide (\texttt{hosp}) and ICU-specific (\t\texttt{icu}) modules. Tables represent patients, admissions, ICU stays, transfers, diagnoses, laboratory results, charted observations, and (where present in the demo subset) intervention/procedure records. The dataset is used here to validate data feasibility, confirm relational join logic, and support exploratory summaries relevant to ICU outcomes and resource utilization.
 
 \subsubsection*{Additional Data Sources}
 No supplementary datasets are included in scope for this phase. This is a deliberate privacy and scope-control choice: external enrichment could introduce linkage risk and distract from feasibility validation. Supporting materials include dataset documentation and course CRISP-DM guidance used for interpretation and planning.
@@ -541,51 +544,134 @@ Key data characteristics relevant to analysis include patient-level date shiftin
 \subsubsection*{Data Collection Methodology}
 Data was obtained as a provided demo distribution and loaded into a local relational database. The initial methodology is confirmatory: validate table presence, count records, confirm key relationships, identify join routes, and profile coverage/missingness for early-window feature extraction.
 
+% Make longtable span full text width nicely
+\setlength{\LTleft}{0pt}
+\setlength{\LTright}{0pt}
 
+\begingroup
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.15}
 
-
-\setlength{\tabcolsep}{4pt}          % tighter columns (optional)
-\renewcommand{\arraystretch}{1.1}    % slightly more row height (optional)
 \begin{longtable}{@{}
-L{4.5cm} 
-L{3.0cm} 
-L{3.8cm} 
-L{1.2cm} 
-L{3.0cm}
+L{0.30\textwidth}
+L{0.12\textwidth}
+L{0.45\textwidth}
+L{0.15\textwidth}
 @{}}
+\caption{Key variables used in this project (grouped by table).}
+\label{tab:key_variables}\\
 
-\caption{Data inventory}\label{tab:data_inventory}\\
 \toprule
-Dataset/Table & Format/Location & Description & Rows & Notes \\
+\textbf{Variable} & \textbf{Type} & \textbf{Description} & \textbf{Notes / Encoding} \\
 \midrule
 \endfirsthead
 
-\multicolumn{5}{l}{\tablename\ \thetable{} (continued)}\\
+\multicolumn{4}{@{}l}{\footnotesize\emph{Table \thetable\ continued.}}\\
 \toprule
-Dataset/Table & Format/Location & Description & Rows & Notes \\
+\textbf{Variable} & \textbf{Type} & \textbf{Description} & \textbf{Notes / Encoding} \\
 \midrule
 \endhead
 
 \midrule
-\multicolumn{5}{r}{\emph{Continued on next page}}\\
+\multicolumn{4}{r@{}}{\footnotesize\emph{Continued on next page}}\\
 \endfoot
 
 \bottomrule
 \endlastfoot
 
-\texttt{mimic.demo\_subject\_id} & CSV $\rightarrow$ Postgres (\texttt{mimic}) & Demo cohort subject list used to subset the full MIMIC schema. & 100 & Demo extract. \\
-\texttt{hosp.patients} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Patient-level demographics (sex, anchor age/year, date of death). & 100 & De-identified via anchor-year scheme. \\
-\texttt{hosp.admissions} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Hospital admissions/encounters including ED registration/out times and disposition. & 275 & Grain: one row per \texttt{hadm\_id}. \\
-\texttt{icu.icustays} & CSV $\rightarrow$ Postgres (\texttt{icu}) & ICU stays nested within admissions (care unit, ICU in/out time, ICU LOS). & 140 & ICU window: 2110--2201 (shifted dates). \\
-\texttt{hosp.transfers} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Patient movement across care units. & 1{,}190 & Supplemental context. \\
-\texttt{icu.chartevents} & CSV $\rightarrow$ Postgres (\texttt{icu}) & High-frequency bedside charted observations (vitals, assessments) indexed by \texttt{itemid}. & 668{,}862 & Median 2{,}520.5 events/stay. \\
-\texttt{hosp.labevents} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Laboratory measurements with numeric/text values and units. & 107{,}727 & Median 178 labs/admission$^{\ast}$. \\
-\texttt{hosp.diagnoses\_icd} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & ICD-coded diagnoses per admission with ordering (\texttt{seq\_num}). & 4{,}506 & Median 14 dx/admission. \\
-\texttt{icu.d\_items} & CSV $\rightarrow$ Postgres (\texttt{icu}) & Dictionary for ICU charted variables (\texttt{itemid} label/category/unit). & 4{,}014 & Reference table. \\
-\texttt{hosp.d\_labitems} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Dictionary for lab tests (\texttt{itemid} label/fluid/category). & 1{,}622 & Reference table. \\
-\texttt{hosp.d\_icd\_diagnoses} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & ICD diagnosis dictionary (\texttt{icd\_code}, \texttt{icd\_version}, long title). & 109{,}775 & Code decoder. \\
+% -----------------------------
+% hosp.patients
+% -----------------------------
+\rowcolor{gray!10}\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.patients}} \hfill \emph{grain: one row per patient}}\\
+\texttt{subject\_id} & integer & Patient identifier used across all tables. & PK \\
+\texttt{gender} & text & Administrative sex. & \{M, F\} \\
+\texttt{anchor\_age} & integer & Age at the anchor year used for de-identification. & shifted \\
+\texttt{anchor\_year} & integer & Anchor year used to shift timestamps for this patient. & shifted \\
+\texttt{anchor\_year\_group} & text & Coarser grouping of anchor years. & year bins \\
+\texttt{dod} & timestamp & Date of death (if available). & may be NULL \\
+
+\addlinespace[0.9em]
+
+% -----------------------------
+% hosp.admissions
+% -----------------------------
+\rowcolor{gray!10}\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.admissions}} \hfill \emph{grain: one row per admission}}\\
+\texttt{hadm\_id} & integer & Hospital admission/encounter identifier. & PK \\
+\texttt{subject\_id} & integer & Patient identifier. & FK $\rightarrow$ \texttt{patients} \\
+\texttt{admittime} & timestamp & Admission start time. & shifted \\
+\texttt{dischtime} & timestamp & Discharge time. & shifted \\
+\texttt{deathtime} & timestamp & In-hospital death time (if applicable). & may be NULL \\
+\texttt{admission\_type} & text & Admission type/category. & categorical \\
+\texttt{edregtime} / \texttt{edouttime} & timestamp & ED registration and ED departure times. & may be NULL \\
+\texttt{hospital\_expire\_flag} & integer & In-hospital mortality indicator. & 0/1 \\
+
+\addlinespace[0.9em]
+
+% -----------------------------
+% icu.icustays
+% -----------------------------
+\rowcolor{gray!10}\multicolumn{4}{@{}l}{\textbf{\texttt{icu.icustays}} \hfill \emph{grain: one row per ICU stay}}\\
+\texttt{stay\_id} & integer & ICU stay identifier. & PK \\
+\texttt{hadm\_id} & integer & Admission identifier. & FK $\rightarrow$ \texttt{admissions} \\
+\texttt{subject\_id} & integer & Patient identifier. & FK $\rightarrow$ \texttt{patients} \\
+\texttt{first\_careunit} / \texttt{last\_careunit} & text & ICU unit at start/end of stay. & categorical \\
+\texttt{intime} / \texttt{outtime} & timestamp & ICU in/out times. & shifted \\
+\texttt{los} & numeric & ICU length-of-stay in days. & derived \\
+
+\addlinespace[0.9em]
+
+% -----------------------------
+% icu.chartevents
+% -----------------------------
+\rowcolor{gray!10}\multicolumn{4}{@{}l}{\textbf{\texttt{icu.chartevents}} \hfill \emph{grain: one row per charted event}}\\
+\texttt{stay\_id} & integer & ICU stay identifier. & FK $\rightarrow$ \texttt{icustays} \\
+\texttt{itemid} & integer & Charted variable identifier. & FK $\rightarrow$ \texttt{d\_items} \\
+\texttt{charttime} & timestamp & Time the observation was charted. & shifted \\
+\texttt{valuenum} / \texttt{value} & numeric/text & Numeric and raw text representations of the measurement. & depends on item \\
+\texttt{valueuom} & text & Unit of measure for numeric values. & depends on item \\
+
+\addlinespace[0.9em]
+
+% -----------------------------
+% hosp.labevents
+% -----------------------------
+\rowcolor{gray!10}\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.labevents}} \hfill \emph{grain: one row per lab measurement}}\\
+\texttt{labevent\_id} & integer & Lab event identifier. & PK \\
+\texttt{hadm\_id} & integer & Admission identifier. & FK $\rightarrow$ \texttt{admissions} \\
+\texttt{itemid} & integer & Lab test identifier. & FK $\rightarrow$ \texttt{d\_labitems} \\
+\texttt{charttime} / \texttt{storetime} & timestamp & Specimen time and store time (when available). & shifted \\
+\texttt{valuenum} / \texttt{value} & numeric/text & Numeric and raw text representations of the result. & depends on item \\
+\texttt{valueuom} & text & Unit of measure for numeric values. & depends on item \\
+\texttt{flag} & text & Abnormality flag (if present). & categorical \\
+
+\addlinespace[0.9em]
+
+% -----------------------------
+% hosp.diagnoses_icd
+% -----------------------------
+\rowcolor{gray!10}\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.diagnoses\_icd}} \hfill \emph{grain: one row per diagnosis per admission}}\\
+\texttt{hadm\_id} & integer & Admission identifier. & FK $\rightarrow$ \texttt{admissions} \\
+\texttt{seq\_num} & integer & Diagnosis ordering within an admission. & 1 = primary \\
+\texttt{icd\_code} & text & ICD diagnosis code. & join with version \\
+\texttt{icd\_version} & integer & ICD version indicator. & 9 or 10 \\
+
+\addlinespace[0.9em]
+
+% -----------------------------
+% Reference tables
+% -----------------------------
+\rowcolor{gray!10}\multicolumn{4}{@{}l}{\textbf{Reference tables}}\\
+\texttt{icu.d\_items.itemid} & integer & Charted variable identifier. & PK \\
+\texttt{icu.d\_items.label} & text & Human-readable charted variable name. & -- \\
+\texttt{hosp.d\_labitems.itemid} & integer & Lab test identifier. & PK \\
+\texttt{hosp.d\_labitems.label} & text & Human-readable lab test name. & -- \\
+\texttt{hosp.d\_icd\_diagnoses.(icd\_code, icd\_version)} & text/int & ICD code key for diagnosis dictionary. & composite key \\
+\texttt{hosp.d\_icd\_diagnoses.long\_title} & text & Human-readable diagnosis description. & -- \\
 
 \end{longtable}
+\endgroup
+
 
 % ---------------------------------------------------------
 \subsection{Data Description}
@@ -609,7 +695,7 @@ This section documents the core structure of the MIMIC-IV demo extract used for 
 
 For this project, the ``spine'' of the dataset is the identifier chain \texttt{subject\_id} $\rightarrow$ \texttt{hadm\_id} $\rightarrow$ \texttt{stay\_id}. The project uses a small set of ``core'' tables (patients, admissions, ICU stays) and three high-value event tables (chart events, lab events, and diagnoses). Reference/dictionary tables (\texttt{d\_items}, \texttt{d\_labitems}, \texttt{d\_icd\_diagnoses}) provide human-readable labels for coded fields.
 
-\begin{longtable}{@{}p{0.26\textwidth} p{0.14\textwidth} p{0.41\textwidth} p{0.15\textwidth}@{}}
+\begin{longtable}{@{}p{0.42\textwidth} p{0.14\textwidth} p{0.30\textwidth} p{0.10\textwidth}@{}}
 \caption{Key variables used in this project (by table).}\\
 \toprule
 Variable & Type & Description & Notes/Encoding \\
@@ -669,6 +755,7 @@ Variable & Type & Description & Notes/Encoding \\
 
 
 \addlinespace
+
 \multicolumn{4}{@{}l}{\textbf{\texttt{hosp.labevents}} (grain: one row per lab measurement)}\\
 \texttt{labevent\_id} & integer & Lab event identifier. & PK \\
 \texttt{hadm\_id} & integer & Admission identifier. & FK $\rightarrow$ \texttt{admissions} \\
@@ -980,6 +1067,7 @@ From the data understanding work, three conclusions guide the next phase: (1) th
 The immediate next deliverables are completion of the SQL inventory outputs (row counts, validated join routes), insertion of measured exploratory visuals (LOS distribution, cohort outcome counts, early-window coverage), and finalization of outcome definitions that meet the documented feasibility gates. These outputs will determine whether the project proceeds to predictive modeling or pivots to a more descriptive, interpretability-first analysis consistent with responsible decision support.
 
 % =========================================================
+\newpage
 \section*{Generative AI Use (Transparency Note)}
 \addcontentsline{toc}{section}{Generative AI Use (Transparency Note)}
 
@@ -991,7 +1079,7 @@ I used generative AI as a writing and workflow assistant (outlining, drafting no
 % - Minimum: course materials + MIMIC documentation + any external sources used to justify thresholds.
 % - If you cite literature for "prolonged ICU stay" threshold, add it here and also state why it was chosen.
 
-
+\newpage
 \bibliographystyle{plainnat}
 \bibliography{ref}
 
@@ -1017,12 +1105,7 @@ I used generative AI as a writing and workflow assistant (outlining, drafting no
 
 \noindent\emph{Note:} The diagram was generated in DBeaver after adding explicit primary/foreign key constraints in the local Postgres instance.
 
-\clearpage
 
-
-
-\section*{Appendix B: Minimal Illustrative Code Snippets}
-\addcontentsline{toc}{section}{Appendix B: Minimal Illustrative Code Snippets}
 
 % VERBATIM (Assignment):
 % "Minimal code snippets in the report (only for illustration); complete code in separate files."
