@@ -244,6 +244,10 @@ icustays.subject_id -> patients.subject_id  |        0|
 chartevents.stay_id -> icustays.stay_id     |        0|
 labevents.hadm_id -> admissions.hadm_id     |    28420|
 diagnoses_icd.hadm_id -> admissions.hadm_id |        0|
+ 
+ labevents may not be actually orphaned but rather labs 
+ that where ordered whiel patient in ED
+ 
  */
 
 SELECT COUNT(*) AS n_orphan_labevents_hadm

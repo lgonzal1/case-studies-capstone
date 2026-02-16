@@ -54,9 +54,9 @@
 - [x] Save SQL artifacts in `data/sql/` (01 data description, 02 relationship discovery/validation, 03 constraints)
 
 ### M5 — Data Understanding (Part 2) + **Assignment 1 due**
-- [ ] Assignment 1 report assembled (BU + DU sections)
-- [ ] EDA artifacts included (figures/tables + data quality summary)
-- [ ] Decision log + assumptions/risks updated and referenced in report
+- [x] Assignment 1 report assembled (BU + DU sections)
+- [x] EDA artifacts included (figures/tables + data quality summary)
+- [x] Decision log + assumptions/risks updated and referenced in report
 
 ### M6 — Data Prep (Part 1)
 ### M7 — Data Prep (Part 2)
@@ -74,10 +74,10 @@
 
 ### Assignment 1 — Business & Data Understanding (M5)
 **Must have:**
-- [ ] `reports/M05_assignment1.md` (or PDF)
-- [ ] Notebooks: data inventory + EDA (or SQL-first equivalent with saved outputs)
-- [ ] `docs/` updated: assumptions/risks + decisions + process diary entry
-- [ ] Repo ZIP passes: “someone else can follow this”
+- [x] `reports/M05_assignment1.md` (or PDF)
+- [x] Notebooks: data inventory + EDA (or SQL-first equivalent with saved outputs)
+- [x] `docs/` updated: assumptions/risks + decisions + process diary entry
+
 
 ### Assignment 2 — Data Prep & Modeling (M9)
 **Must have:**

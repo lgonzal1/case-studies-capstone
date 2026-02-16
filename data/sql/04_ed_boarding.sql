@@ -1,3 +1,4 @@
+/*ended up not using this, but keeping it in the repository for reference, idea was to see if patient boarding in ED prior to ICU visit varied significantly */
 SELECT
     a.*,
     icu.*,
