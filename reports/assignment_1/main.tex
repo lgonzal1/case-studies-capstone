@@ -26,6 +26,9 @@
 \usepackage{fancyhdr}
 \usepackage{lastpage}
 \usepackage{tabularx}
+\usepackage{ragged2e} % better ragged-right than \raggedright
+
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
 
 % ==========================================
 % Metadata
@@ -222,21 +225,45 @@ Develop a defensible ICU resource-use analysis foundation that can support decis
 \subsubsection*{Quantitative Success Criteria (Feasibility-First, With Explicit Gates)}
 Because the dataset is a demo subset, early milestones focus on feasibility thresholds that prevent unstable conclusions. Performance targets for predictive models will be finalized once baseline event rates and coverage are confirmed.
 
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.1}
+
 \begin{table}[H]
 \centering
-\caption{Quantitative Success Metrics (Revised, With Feasibility Gates)}
+\caption{Quantitative Success Metrics}
 \label{tab:quant_success}
-\begin{tabular}{p{4.0cm} p{2.0cm} p{2.4cm} p{4.9cm}}
+\begin{tabular}{@{}L{3.4cm} L{4cm} L{5.1cm} L{3.5cm}@{}}
 \toprule
-\textbf{Metric} & \textbf{Baseline} & \textbf{Target / Gate} & \textbf{Measurement Method} \\
+\textbf{Metric} & \textbf{Baseline \newline(measured)} & \textbf{Target / Gate} & \textbf{Measurement Method} \\
 \midrule
-Key integrity for joins & TBD & 100\% valid key relationships on primary join paths & SQL checks: uniqueness + referential consistency \\
-Outcome event support & TBD & Minimum viable positives (e.g., $\ge 15$ cases) per chosen outcome OR pivot scope & SQL counts by grain + outcome definition \\
-Early-window coverage (6--24h) & TBD & Coverage sufficient for modeling (e.g., $\ge 60\%$ of stays with core vitals/labs) OR widen window & Missingness/coverage profiling on extracts \\
-Cohort fragmentation risk & TBD & Coarse buckets maintain interpretable $n$ per group (e.g., $\ge 20$ per bucket) OR collapse groups & Counts by candidate cohort definitions \\
+Key integrity for joins
+& 0 orphans on core join paths tested (e.g., \texttt{admissions.subject\_id} $\rightarrow$ \texttt{patients.subject\_id}: 0)
+& 100\% valid key relationships on primary join paths
+& SQL orphan checks; uniqueness checks on spine keys \\
+
+Outcome event support
+& 16/140 prolonged stays (11.4\%) for LOS $\ge$ 8 days
+& Minimum viable positives (e.g., $\ge 15$ cases) per chosen outcome OR pivot scope
+& SQL counts at the modeling grain (\texttt{stay\_id}) \\
+
+Early-window coverage (6--24h)
+& Core vitals availability within 6h: 94.3\%--99.3\% (within 24h: 96.4\%--100\%)
+
+& Coverage sufficient for modeling (e.g., $\ge 60\%$ of stays with core vitals/labs) OR widen window
+& Missingness/coverage profiling on extracts \\
+
+Cohort fragmentation risk
+& First care unit categories = 9; minimum $n=1$; 3/9 units have $n<5$ (fragmentation risk for subgroup comparisons).
+
+& Coarse buckets maintain interpretable $n$ per group (e.g., $\ge 20$ per bucket) OR collapse groups
+& Counts by candidate cohort definitions \\
+
 \bottomrule
 \end{tabular}
 \end{table}
+
+
+
 
 \subsubsection*{Qualitative Success Criteria}
 \begin{itemize}[leftmargin=1.5em]
@@ -246,12 +273,12 @@ Cohort fragmentation risk & TBD & Coarse buckets maintain interpretable $n$ per 
     \item \textbf{Reproducibility:} data inventory, profiling steps, and derived metrics are traceable and repeatable.
 \end{itemize}
 
-\subsubsection*{Impact Assessment (Contextual)}
+\subsubsection*{Impact Assessment}
 ICU bed-days are among the most constrained and operationally consequential hospital resources. Even modest improvements in early identification of prolonged-stay risk can support better planning (staffing, consult prioritization, step-down coordination) and more focused pathway review. For this project phase, the measurable impact is primarily \textit{risk reduction}: preventing an analysis plan that would later produce misleading conclusions due to sparse or systematically missing data.
 
 \subsubsection*{Timeline and Milestones}
 \begin{itemize}[leftmargin=1.5em]
-    \item \textbf{M4 (current):} load demo tables into local Postgres; validate keys/grains; draft ERD v1; complete baseline row counts and join routes.
+    \item \textbf{M5 (current):} load demo tables into local Postgres; validate keys/grains; draft ERD v1; complete baseline row counts and join routes.
     \item \textbf{M5 (by due date):} finalize Assignment 1 narrative; include initial profiling outputs (counts, coverage summaries, placeholder plots updated with real figures where available).
     \item \textbf{Next module:} lock outcome definition(s) using feasibility gates; begin data preparation with documented missingness strategy.
 \end{itemize}
@@ -302,7 +329,7 @@ Several bias sources are plausible in ICU data and are relevant even at the feas
 
 \begin{table}[H]
 \centering
-\caption{Responsibility Risk Register (Revised Draft)}
+\caption{Responsibility Risk Register}
 \label{tab:risk_register}
 \begin{tabular}{p{3.0cm} p{4.7cm} p{3.0cm} p{3.3cm}}
 \toprule
@@ -334,7 +361,9 @@ Over-claiming & Predictive patterns misread as causal & Bad operational decision
 % - Pick ONE primary DS framing for Assignment 1 (even if you keep secondary options).
 % - Keep early-window anti-leakage rule as a hard constraint.
 \subsubsection*{Outcome definition (prolonged ICU stay)}
-Because there is no single universal cutoff, this project defines a prolonged ICU stay as an ICU LOS of at least 8 days (i.e., extending beyond the first week), consistent with prior ICU trauma literature that operationalizes prolonged stays using a one-week cutoff. \citep{Lefering2024ProlongedICUStay}
+Definitions of \emph{prolonged} ICU length of stay vary across studies and are often operationalized using pragmatic week-based cutoffs. In this project, we define a prolonged ICU stay as ICU LOS $\ge$ 8 days (i.e., extending beyond the first week) to create a clinically interpretable binary outcome aligned with prior trauma ICU operationalizations \citep{Lefering2024ProlongedICUStay}. In the demo cohort, 16 of 140 ICU stays (11.4\%) meet this prolonged-stay definition, satisfying the minimum event-support feasibility gate.
+
+
 
 
 \subsubsection*{Technical Problem Framing}
@@ -355,12 +384,36 @@ Alternative framings (e.g., LOS regression or time-to-event modeling) remain pos
 
 
 \subsubsection*{Technical Success Criteria (Provisional)}
-Given the small demo cohort, technical targets emphasize interpretability and stability over headline performance:
-\begin{itemize}[leftmargin=1.5em]
-    \item \textbf{Minimum viability:} baseline model exceeds naive prevalence prediction on discrimination metrics (e.g., AUC/PR-AUC) \emph{and} shows reasonable calibration.
-    \item \textbf{Operational usefulness:} the model can identify a higher-risk subset (e.g., top 20\% risk) with materially higher observed prolonged-stay rate than baseline (TBD after feasibility).
-    \item \textbf{Transparency:} feature logic and timing constraints are documented; no post-outcome variables included.
-\end{itemize}
+Because this project uses the MIMIC-IV demo subset, success criteria emphasize interpretability, reproducibility, and operational usefulness over headline model performance. For prolonged-stay risk, we focus on threshold-based metrics that map directly to how an alert would behave in practice (catching true prolonged stays while limiting alert burden). We also include a simple calibration check (predicted risk groups versus observed prolonged-stay rates) so predicted probabilities remain interpretable. For LOS regression, we report error in days (MAE) because it is directly meaningful for capacity and staffing conversations. AUROC may be reported as an optional diagnostic summary, but it is not the primary decision criterion for this capstone.
+
+
+\setlength{\tabcolsep}{4pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{table}[H]
+\centering
+\small
+\caption{Technical success criteria mapped to operational intent (demo dataset; thresholds illustrative).}
+\begin{tabular}{@{}L{3.6cm}L{3.7cm}L{2.7cm}L{3.0cm}@{}}
+\toprule
+Deliverable & Metric(s) stakeholders understand & Target threshold (illustrative) & Baseline comparator \\
+\midrule
+Binary classifier: prolonged ICU LOS ($\ge$ 8 days) risk at +24h
+& Sensitivity (recall); PPV (precision); Alert rate (alerts per 100 stays); \newline Calibration check (risk groups vs observed rate)
+& Sensitivity $\ge$ 0.80 with PPV $\ge$ 0.30; \newline alert rate is operationally plausible; \newline no major calibration mismatch
+& Base-rate model; \newline Logistic regression with minimal features \\
+\addlinespace
+Regression: ICU LOS (days)
+& MAE (days); \% within $\pm$1 day; \newline Error by subgroup (age/sex) as a fairness sanity check
+& MAE improves $\ge$ 10\% vs baseline \newline (or $\ge$ 0.5 day absolute improvement)
+& Predict median LOS; \newline Simple linear regression \\
+\addlinespace
+Explainability artifact
+& Top drivers are clinically plausible; stable across runs; short narrative summary
+& Similar top drivers recur across folds/runs; \newline usable in 1--2 minutes
+& N/A \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsubsection*{Analytical Approach Overview}
 The planned approach is interpretability-first:
@@ -373,7 +426,7 @@ The planned approach is interpretability-first:
 
 \begin{table}[H]
 \centering
-\caption{Business-to-Technical Objective Mapping (Revised)}
+\caption{Business-to-Technical Objective Mapping}
 \label{tab:obj_mapping}
 \begin{tabular}{p{4.2cm} p{4.2cm} p{4.2cm}}
 \toprule
@@ -420,7 +473,7 @@ Maintain defensible analysis quality & Reproducible inventory + assumptions/risk
 \subsubsection*{Timeline and Milestones}
 \begin{table}[H]
 \centering
-\caption{Project Milestones (Course-Aligned)}
+\caption{Project Milestones}
 \label{tab:milestones}
 \begin{tabular}{p{3.0cm} p{5.3cm} p{4.1cm}}
 \toprule
@@ -428,7 +481,7 @@ Maintain defensible analysis quality & Reproducible inventory + assumptions/risk
 \midrule
 2026-01-26 (M1--M2) & Project selection, repo scaffold, initial framing, table shortlist & Completed (Diary/Decision Log) \\
 2026-01-31 (M2) & Business understanding refinement; risks/assumptions update & Completed \\
-Current (M4) & Postgres load; join validation; ERD v1; initial profiling outputs & In progress \\
+Current (M5) & Postgres load; join validation; ERD v1; initial profiling outputs & In progress \\
 By 2026-02-16 (M5) & Assignment 1 finalized (BU + DU + visuals + quality summary) & In progress \\
 \bottomrule
 \end{tabular}
@@ -484,16 +537,38 @@ Key data characteristics relevant to analysis include patient-level date shiftin
 \subsubsection*{Data Collection Methodology}
 Data was obtained as a provided demo distribution and loaded into a local relational database. The initial methodology is confirmatory: validate table presence, count records, confirm key relationships, identify join routes, and profile coverage/missingness for early-window feature extraction.
 
-\begin{table}[H]
-\centering
 
-\label{tab:data_inventory}
 
-\begin{tabular}{p{4.4cm} p{3.0cm} p{3.5cm} p{1.5cm} p{2.8cm}}
 
+\setlength{\tabcolsep}{4pt}          % tighter columns (optional)
+\renewcommand{\arraystretch}{1.1}    % slightly more row height (optional)
+\begin{longtable}{@{}
+L{4.5cm} 
+L{3.0cm} 
+L{3.8cm} 
+L{1.2cm} 
+L{3.0cm}
+@{}}
+
+\caption{Data inventory}\label{tab:data_inventory}\\
 \toprule
 Dataset/Table & Format/Location & Description & Rows & Notes \\
 \midrule
+\endfirsthead
+
+\multicolumn{5}{l}{\tablename\ \thetable{} (continued)}\\
+\toprule
+Dataset/Table & Format/Location & Description & Rows & Notes \\
+\midrule
+\endhead
+
+\midrule
+\multicolumn{5}{r}{\emph{Continued on next page}}\\
+\endfoot
+
+\bottomrule
+\endlastfoot
+
 \texttt{mimic.demo\_subject\_id} & CSV $\rightarrow$ Postgres (\texttt{mimic}) & Demo cohort subject list used to subset the full MIMIC schema. & 100 & Demo extract. \\
 \texttt{hosp.patients} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Patient-level demographics (sex, anchor age/year, date of death). & 100 & De-identified via anchor-year scheme. \\
 \texttt{hosp.admissions} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Hospital admissions/encounters including ED registration/out times and disposition. & 275 & Grain: one row per \texttt{hadm\_id}. \\
@@ -505,10 +580,8 @@ Dataset/Table & Format/Location & Description & Rows & Notes \\
 \texttt{icu.d\_items} & CSV $\rightarrow$ Postgres (\texttt{icu}) & Dictionary for ICU charted variables (\texttt{itemid} label/category/unit). & 4{,}014 & Reference table. \\
 \texttt{hosp.d\_labitems} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & Dictionary for lab tests (\texttt{itemid} label/fluid/category). & 1{,}622 & Reference table. \\
 \texttt{hosp.d\_icd\_diagnoses} & CSV $\rightarrow$ Postgres (\texttt{hosp}) & ICD diagnosis dictionary (\texttt{icd\_code}, \texttt{icd\_version}, long title). & 109{,}775 & Code decoder. \\
-\bottomrule
 
-\end{tabular}
-\end{table}
+\end{longtable}
 
 % ---------------------------------------------------------
 \subsection{Data Description}
@@ -558,16 +631,7 @@ Variable & Type & Description & Notes/Encoding \\
 \texttt{anchor\_year\_group} & text & Coarser grouping of anchor years. & year bins \\
 \texttt{dod} & timestamp & Date of death (if available). & may be NULL \\
 
-\addlinespace
-\multicolumn{4}{@{}l}{\textbf{\texttt{hosp.admissions}} (grain: one row per admission)}\\
-\texttt{hadm\_id} & integer & Hospital admission/encounter identifier. & PK \\
-\texttt{subject\_id} & integer & Patient identifier. & FK $\rightarrow$ \texttt{patients} \\
-\texttt{admittime} & timestamp & Admission start time. & shifted \\
-\texttt{dischtime} & timestamp & Discharge time. & shifted \\
-\texttt{deathtime} & timestamp & In-hospital death time (if applicable). & may be NULL \\
-\texttt{admission\_type} & text & Admission type/category. & categorical \\
-\texttt{edregtime} / \texttt{edouttime} & timestamp & ED registration and ED departure times. & may be NULL \\
-\texttt{hospital\_expire\_flag} & integer & In-hospital mortality indicator. & 0/1 \\
+
 
 \addlinespace
 \multicolumn{4}{@{}l}{\textbf{\texttt{hosp.admissions}} (grain: one row per admission)}\\
@@ -641,7 +705,9 @@ Figure~\ref{fig:mimic_demo_core_erd-1} (Appendix~A) summarizes the core relation
 \end{itemize}
 
 
-To reduce ambiguity when generating the ERD, explicit PK/FK constraints were added in the local Postgres instance and validated using ``orphan'' checks (e.g., every \texttt{admissions.subject\_id} exists in \texttt{patients.subject\_id}). No orphaned records were observed for the core relationships used above.
+To reduce ambiguity when generating the ERD, explicit PK/FK constraints were added in the local Postgres instance and validated using ``orphan'' checks (e.g., every \texttt{admissions.subject\_id} exists in \texttt{patients.subject\_id}). Across the core join paths used in this report, orphan checks returned 0 orphaned records
+(100\% referential integrity on those paths).
+
 
 
 
@@ -670,6 +736,7 @@ This project uses the MIMIC-IV demo extract, which is intentionally small compar
 
 
 % ---------------------------------------------------------
+\newpage
 \subsection{Data Exploration Report (Preliminary)}
 \label{subsec:data_exploration}
 
@@ -687,88 +754,205 @@ This project uses the MIMIC-IV demo extract, which is intentionally small compar
 %   (3) Early-window coverage heatmap/table (even if simple)
 
 \subsubsection*{Univariate Analysis}
-The first exploratory goal is to characterize ICU LOS and outcome prevalence at candidate grains. This includes LOS distribution shape (e.g., right-skew, long tail) and basic counts for candidate outcomes to determine whether modeling is feasible or whether the scope must be simplified.
+To ground the exploratory analysis in basic utilization patterns, I first examined the
+distribution of ICU length of stay (LOS) across all ICU episodes in the demo database.
+LOS is computed as \texttt{outtime} minus \texttt{intime} from \texttt{icu.icustays}.
+Figure~\ref{fig:icu_los_distribution} shows both a histogram (with a smoothed density
+overlay) and a boxplot with jittered points to highlight outliers and tail behavior.
 
-\begin{figure}[H]
-    \centering
-    % NOTES TO SELF:
-    % - Replace with actual ICU LOS distribution (histogram + median/mean annotation).
-    % - If you only include one figure in DU, make it this one and reference it heavily.
-    \fbox{\parbox[c][2.1in][c]{0.82\textwidth}{\centering Placeholder: ICU LOS distribution (histogram/boxplot)}}
-    \caption{ICU length-of-stay distribution (placeholder; replace with measured figure).}
-    \label{fig:los_distribution}
-\end{figure}
+In this cohort ($n=140$ ICU stays), LOS is strongly right-skewed: the median is 2.16 days
+(IQR 1.17--4.91), with a long tail extending to approximately 20.5 days. Using an 8-day cutoff as a pragmatic “prolonged ICU stay” threshold for feasibility testing,
+16/140 stays (11.4\%) meet this definition.
+ This skew and tail behavior motivates using robust summaries
+(e.g., median/IQR) and considering transformations or threshold-based definitions in later
+modeling and evaluation.
 
-\subsubsection*{Bivariate Relationships}
-After grain and outcomes are stabilized, bivariate exploration will examine relationships between early-window measurement density (e.g., number of labs/vitals recorded) and outcomes such as prolonged ICU stay. This step is explicitly cautious: measurement frequency may reflect acuity and workflow rather than independent ``predictive signal.''
-
-\subsubsection*{Temporal Patterns and Trends (Within-Encounter)}
-Temporal analysis focuses on within-stay timing (first 6--24 hours) rather than calendar trends across patients. This supports leakage-aware feature extraction and prevents misleading claims about seasonality or real-world operational load that cannot be inferred from date-shifted demo data.
-
-\subsubsection*{Unexpected Discoveries (Current)}
-The dominant ``discovery'' at this stage is feasibility risk: small sample size and event-table sparsity can dictate which outcomes and cohorts remain defensible. This has direct project-plan implications (feasibility gates and contingency pivots).
-
-\subsubsection*{Organizational-Relevant Segmentation}
-Segmentation will begin with 3--4 coarse buckets (e.g., broad diagnostic/service groupings) to preserve interpretability and adequate $n$ per group. Refinement is contingent on stable cohort counts.
-
-\subsubsection*{Hypothesis Generation (Draft)}
-\begin{itemize}[leftmargin=1.5em]
-    \item Certain coarse ICU pathway groups may show meaningfully different prolonged-stay rates, even within a small demo cohort.
-    \item Early-window measurement patterns (including missingness) may systematically differ across cohorts and correlate with outcomes.
-    \item Prolonged ICU stay and return-risk outcomes may require different grain choices to remain definable and interpretable.
-\end{itemize}
-
-% ---------------------------------------------------------
-\subsection{Data Quality Assessment (Preliminary)}
-\label{subsec:data_quality}
-
-% VERBATIM (Assignment):
-% "2.4 Data Quality Assessment (1.5-2 pages)"
-%
-% ACTION:
-% - Quantify missingness (not just describe it) once inventory is done.
-% - Assess accuracy/outliers/inconsistencies.
-% - Check consistency across related fields/tables.
-% - Discuss relevance/coverage and impact on objectives.
-%
-% NOTES TO SELF (added):
-% - Treat this like a gating section: it determines what you are allowed to claim later.
-Several data characteristics follow directly from de-identification and sampling in the demo dataset: identifiers are synthetic, dates are shifted by patient-specific offsets while preserving intervals, ages above 89 are transformed for privacy, free-text notes are excluded, and some clinical event tables may be sparse or empty because only 100 patients are included \cite{PhysioNet-mimic-iv-demo-2.2}. These properties are treated as first-order constraints in both feasibility gates and interpretation.
-
-\subsubsection*{Completeness Analysis}
-Completeness will be quantified for: (a) key identifiers and timestamps needed for LOS and early windows, and (b) core candidate predictors (vitals/labs) within the first 6--24 hours. Particular attention is paid to whether missingness appears systematic (workflow/acuity-driven) rather than random.
-
-\subsubsection*{Accuracy Assessment}
-Accuracy checks will flag implausible values (outliers), inconsistent timestamps (e.g., negative durations), and duplicate or conflicting records where applicable. Given the dataset context, these checks are framed as data integrity validation rather than clinical chart audit.
-
-\subsubsection*{Consistency Evaluation}
-Consistency checks focus on referential integrity and grain alignment across \texttt{subject\_id}, \texttt{hadm\_id}, and \texttt{stay\_id}, including whether event tables reliably map to the selected modeling grain without unintended duplication inflation.
-
-\subsubsection*{Timeliness and Currency}
-The demo dataset is not intended for real-time operational monitoring. Accordingly, the analysis focuses on methodological feasibility and decision framing rather than benchmarking current-year ICU performance.
-
-\subsubsection*{Relevance and Coverage}
-Coverage risk is moderate-to-high due to demo cohort size and potential subgroup imbalance. This directly constrains cohort granularity and determines whether readmission/return-risk analyses remain viable.
-
-\subsubsection*{Data Quality Impact Assessment}
-Data quality will shape scope more than algorithm choice in this project stage. If outcome counts are too small or early-window coverage is too sparse, the plan explicitly pivots to fewer cohorts and more descriptive analysis rather than forcing a weak predictive model.
+\paragraph{Summary statistics.}
+Table~\ref{tab:icu_los_summary} quantifies the heavy right tail observed in Figure~\ref{fig:icu_los_distribution}.
+Because LOS is skewed, median and IQR are emphasized over mean.
 
 \begin{table}[H]
 \centering
-\caption{Data Quality Issues and Priority (Revised Starter)}
-\label{tab:data_quality}
-\begin{tabular}{p{4.0cm} p{2.6cm} p{3.4cm} p{3.2cm}}
+\small
+\caption{ICU length-of-stay (LOS) summary in the MIMIC-IV demo cohort.}
+\label{tab:icu_los_summary}
+\begin{tabular}{@{}lrrrrr@{}}
 \toprule
-\textbf{Issue} & \textbf{Severity} & \textbf{Affected Analyses} & \textbf{Planned Treatment} \\
+$n$ stays & Median (days) & IQR (days) & Mean (days) & 90th pct (days) & Max (days) \\
 \midrule
-Event-table sparsity & Medium--High & Early predictors; subgroup comparisons & Coverage profiling; simplify feature set \\
-Systematic missingness & Medium--High & Interpretation of ``signal'' & Missingness analysis; cautious narrative \\
-Subgroup fragmentation & Medium--High & Cohort comparisons & Coarse buckets; collapse if needed \\
-Outcome rarity uncertainty & Medium--High & Primary/secondary outcome choice & Count gates; drop secondary first \\
+140 & 2.16 & 1.17--4.91 & 3.68 & 8.86 & 20.53 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
+
+
+\subsubsection{Target Variable Exploration: ICU Length of Stay (LOS)}
+\begin{figure}[H]
+  \centering
+  \begin{subfigure}{0.98\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/icu_los_hist_kde.png}
+    \caption{Histogram and KDE of ICU LOS showing strong right-skew and a long tail.}
+    \label{fig:icu_los_hist_kde}
+  \end{subfigure}
+
+  \vspace{0.4em}
+
+  \begin{subfigure}{0.98\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{figures/icu_los_boxplot_threshold.png}
+    \caption{Boxplot with jitter highlighting dispersion and the candidate long-stay threshold.}
+    \label{fig:icu_los_boxplot_threshold}
+  \end{subfigure}
+
+  \caption{ICU LOS distribution in the MIMIC-IV demo cohort (n=140 ICU stays).}
+  \label{fig:icu_los_distribution}
+\end{figure}
+
+\subsubsection*{Bivariate Relationships}
+To move beyond univariate summaries, I explored a small set of bivariate relationships that are
+(1) easy to interpret for non-technical stakeholders and
+(2) directly relevant to the feasibility of early risk stratification.
+Because this is a small demo cohort, these plots are used for hypothesis generation only
+and should not be interpreted as causal.
+
+\paragraph{ICU LOS by first care unit (pathway proxy).}
+Figure~\ref{fig:icu_los_by_careunit} compares LOS across the first ICU care unit.
+There is visible variation in medians and spread across units, suggesting that care-unit pathway
+may be an important stratifier for downstream modeling and for communicating results to clinicians.
+However, several categories have small sample sizes, so this signal should be treated as directional
+and revisited after final cohort rules are locked.
+
+\begin{figure}[H]
+\centering
+\IfFileExists{figures/icu_los_by_first_careunit_boxplot.png}
+  {\includegraphics[width=0.98\linewidth]{figures/icu_los_by_first_careunit_boxplot.png}}
+  {\fbox{Missing figure: figures/icu_los_by_first_careunit_boxplot.png}}
+\caption{ICU LOS (days) by first ICU care unit (exploratory), ordered by median LOS.}
+\label{fig:icu_los_by_careunit}
+\end{figure}
+
+\paragraph{ICU LOS vs chart-event volume (measurement intensity and leakage risk).}
+Figure~\ref{fig:icu_los_vs_chartevents} shows a strong positive relationship between ICU LOS and
+chart-event volume (log1p scaled).
+This is not surprising: longer stays naturally accumulate more documentation.
+Analytically, this is a useful warning flag—\emph{full-stay event counts would be a leaky feature}
+for predicting LOS.
+In later modeling, any “measurement density” features must be computed only within an early,
+fixed window (e.g., first 6--24 hours) so that documentation reflects early trajectory rather than
+time already spent in the ICU.
+
+\begin{figure}[H]
+\centering
+\IfFileExists{figures/icu_los_vs_chartevents_scatter.png}
+  {\includegraphics[width=0.82\linewidth]{figures/icu_los_vs_chartevents_scatter.png}}
+  {\fbox{Missing figure: figures/icu_los_vs_chartevents_scatter.png}}
+\caption{ICU LOS versus chart-event volume (exploratory). Event counts are shown on a log1p scale. The relationship primarily reflects duration-driven accumulation and highlights potential leakage if full-stay counts are used as predictors.}
+\label{fig:icu_los_vs_chartevents}
+\end{figure}
+
+\paragraph{Prolonged ICU stay rate by admission type (coarse operational segmentation).}
+Figure~\ref{fig:icu_prolonged_rate_by_admission} summarizes the prolonged-stay rate
+(LOS $>$ 8 days) by admission type.
+Some categories appear to differ, but several groups have very small $n$.
+Accordingly, admission type is treated as a candidate segmentation variable for communication and
+feature engineering, not as a reliable comparative statistic in this demo cohort.
+
+\begin{figure}[H]
+\centering
+\IfFileExists{figures/icu_prolonged_rate_by_admission_type.png}
+  {\includegraphics[width=0.95\linewidth]{figures/icu_prolonged_rate_by_admission_type.png}}
+  {\fbox{Missing figure: figures/icu_prolonged_rate_by_admission_type.png}}
+\caption{Prolonged ICU stay rate (LOS $> 8$ days) by admission type (exploratory). Sample sizes are shown above bars to emphasize uncertainty in small categories.}
+\label{fig:icu_prolonged_rate_by_admission}
+\end{figure}
+
+\subsubsection*{Hypothesis Generation (Updated)}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Care-pathway hypothesis:} first ICU care unit (a pathway proxy) is associated with different LOS distributions and may be a useful stratifier for model evaluation and communication.
+    \item \textbf{Measurement-intensity hypothesis:} early-window documentation intensity (counts of vitals/labs recorded in the first 6--24 hours) correlates with prolonged ICU stay risk, but must be engineered in a leakage-aware way.
+    \item \textbf{Admission-type hypothesis:} admission type may show different prolonged-stay rates, but categories with small $n$ should be collapsed into coarser groupings for stability (e.g., emergent vs elective).
+\end{itemize}
+
+% ---------------------------------------------------------
+\subsection{Data Quality Assessment}
+\label{subsec:data_quality}
+
+Several data characteristics follow directly from de-identification and sampling in the demo dataset: identifiers are synthetic, dates are shifted by patient-specific offsets while preserving intervals, ages above 89 are transformed for privacy, free-text notes are excluded, and some clinical event tables may be sparse or empty because only 100 patients are included \cite{PhysioNet-mimic-iv-demo-2.2}. These properties were treated as first-order constraints in feasibility gates and interpretation.
+
+\subsubsection*{Completeness Analysis}
+Completeness was quantified for a core early-window predictor set using ICU stays as the modeling grain. For each stay (\(n=140\)), we measured whether at least one observation was present within the first 6 hours and 24 hours after ICU admission (\texttt{intime}). This definition assesses practical feature availability for early-window modeling (presence/absence), rather than per-minute sampling density.
+
+\begin{table}[H]
+\centering
+\caption{Early-window availability of core vitals (at least one measurement present)}
+\label{tab:missingness_vitals}
+\begin{tabular}{l r r r r r}
+\toprule
+\textbf{Variable} & \textbf{Stays} & \textbf{With 6h} & \textbf{\% 6h} & \textbf{With 24h} & \textbf{\% 24h} \\
+\midrule
+HR   & 140 & 139 & 99.3 & 140 & 100.0 \\
+RR   & 140 & 139 & 99.3 & 140 & 100.0 \\
+SpO2 & 140 & 139 & 99.3 & 140 & 100.0 \\
+Temp & 140 & 132 & 94.3 & 135 & 96.4 \\
+SBP  & 140 & 137 & 97.9 & 139 & 99.3 \\
+DBP  & 140 & 137 & 97.9 & 139 & 99.3 \\
+MAP  & 140 & 137 & 97.9 & 139 & 99.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Overall, core vitals showed high early-window coverage (\(\geq 97.9\%\) within 6 hours for all except temperature). Temperature had the lowest availability (94.3\% in 6 hours), suggesting either less frequent measurement or recording conventions relative to other vitals. Given the small demo cohort, missingness patterns were treated as workflow/documentation artifacts rather than purely random noise.
+
+\subsubsection*{Accuracy and Plausibility Checks}
+We performed basic integrity checks to identify implausible durations and timestamp inconsistencies. No ICU stays had non-positive length of stay (\texttt{outtime} \(\le\) \texttt{intime}); \(n=0\) such records were found. This supports basic internal consistency of the ICU stay spine for duration-based outcomes.
+
+\subsubsection*{Consistency and Grain Alignment (Measured)}
+To validate grain alignment, we checked for duplicate keys in the ICU stay spine and for temporal alignment between event records and ICU admission time.
+No duplicate \texttt{stay\_id} values were observed in \texttt{icu.icustays} (\(n=0\) duplicates), supporting use of \texttt{stay\_id} as a unique modeling grain.
+
+For core vital itemids, we observed \(n=278\) charted events with \texttt{charttime} earlier than ICU \texttt{intime}. This is plausibly explained by pre-ICU documentation (e.g., ED/ward measurements carried into the ICU record) and does not necessarily indicate erroneous timestamps. For modeling, early-window feature extraction was explicitly constrained to events with \texttt{charttime} in \([\texttt{intime}, \texttt{intime}+\Delta)\) to avoid leakage from pre-ICU periods.
+
+\begin{table}[H]
+\centering
+\caption{Selected data integrity checklist (counts)}
+\label{tab:dq_checklist}
+\begin{tabular}{p{8.2cm} r}
+\toprule
+\textbf{Check} & \textbf{Count} \\
+\midrule
+ICU stays with \texttt{outtime} \(\le\) \texttt{intime} (non-positive LOS) & 0 \\
+Duplicate \texttt{stay\_id} in \texttt{icu.icustays} & 0 \\
+Core-vital chart events with \texttt{charttime} \(<\) ICU \texttt{intime} & 278 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Timeliness and Currency}
+The demo dataset is not intended for real-time operational monitoring. Accordingly, the analysis emphasizes methodological feasibility (feature availability and outcome definability) rather than benchmarking contemporary ICU performance.
+
+\subsubsection*{Relevance and Coverage}
+Coverage risk remained moderate-to-high due to the demo cohort size and potential subgroup imbalance. This constrained subgroup granularity and favored coarse stratification over fine-grained cohort comparisons.
+
+\subsubsection*{Data Quality Impact Assessment}
+In this project stage, data quality shaped scope more than algorithm choice. High early-window availability for core vitals supports feasibility of a minimal predictor set. Temperature availability was slightly lower and may be treated with imputation or exclusion depending on downstream sensitivity. The presence of pre-ICU charting (events recorded before \texttt{intime}) motivated strict time-window filters to prevent leakage and ensure predictors are truly available within the intended early window.
+
+\begin{table}[H]
+\centering
+\caption{Observed data quality issues and priority}
+\label{tab:data_quality}
+\begin{tabular}{p{4.0cm} p{2.6cm} p{3.4cm} p{3.2cm}}
+\toprule
+\textbf{Issue} & \textbf{Severity} & \textbf{Affected Analyses} & \textbf{Treatment Used} \\
+\midrule
+Event-table sparsity (demo cohort) & Medium--High & Subgroup comparisons; rare outcomes & Coarse cohorts; feasibility gates \\
+Temperature slightly lower early coverage & Medium & Early predictors & Consider imputation or drop if unstable \\
+Pre-ICU charting (\texttt{charttime} $<$ \texttt{intime}) & Medium & Early-window predictors; leakage risk & Filter to \([\texttt{intime}, \texttt{intime}+\Delta)\) \\
+Systematic missingness risk & Medium & Interpretation of ``signal'' & Report coverage; cautious narrative \\
+\bottomrule
+\end{tabular}
+\end{table}
 % =========================================================
 \section*{Conclusion}
 \addcontentsline{toc}{section}{Conclusion}
