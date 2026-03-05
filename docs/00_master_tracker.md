@@ -1,20 +1,34 @@
 # 00 — Master Tracker (Case Studies in Data Science)
 
-## Current status
-- Current module: M5 (Data Understanding artifacts complete; ready to assemble Assignment 1 DU sections)
+## Current status (last updated: 2026-03-04)
+- Today: **2026-03-04 (America/Chicago)**
+- Current module: **M7 (Data Preparation — Part 2)**
 - Current objective (1 sentence):
-  Finalize outcome + cohort definitions, add 1–2 lightweight EDA/data-quality artifacts, and package the BU+DU report for Assignment 1 submission.
-- Next deadline: 2026-02-16 Assignment 1 due (M5)
+  Complete the Module 7 process diary and finalize a reproducible Data Preparation workflow (select → clean → construct → integrate → format) to support Assignment 2 modeling.
 
-- Risk level: Medium (mostly due to N≈100 + sparsity + subgroup sizes)
-- Next 3 actions:
-  1. Run SQL-first EDA for candidate outcomes (ICU LOS threshold + readmission feasibility) and summarize in the report.
-  2. Data quality summary: missingness + timestamp consistency for core tables (admissions/icustays/chartevents/labevents).
-  3. Draft outcome + cohort definitions (unit of analysis + inclusion/exclusion) and log decisions.
+### Course progress (graded checkpoints)
+- ✅ Assignment 0: Case Selection — **100%** (2026-01-20)
+- ✅ Business Understanding Quiz — **100%** (2026-01-26)
+- ✅ Module 3 Process Diary — **100%** (2026-02-02)
+- ✅ Data Understanding Quiz — **100%** (2026-02-09)
+- ✅ Assignment 1: Business & Data Understanding Report — **100%** (2026-02-16)
+- ✅ Assignment 1: Show Your Work — submitted (2026-02-16)
+- ✅ Data Preparation Quiz — **100%** (2026-02-23)
+- ⚠️ Module 7 Process Diary — **due/overdue; in progress today**
+
+- Risk level: **Low–Medium**
+  - Low: You already have reproducible SQL artifacts and a prepared dataset path.
+  - Medium: Process diary is overdue + you want to keep documentation tight and consistent for grading.
+
+### Next 3 actions (highest ROI)
+1) **Submit Module 7 process diary** (tight narrative: what you did, what you learned, what’s next, blockers).
+2) **Write Data Prep documentation artifacts** (brief but concrete): selection rationale + cleaning decisions + constructed feature definitions.
+3) **Lock “v1” prepared dataset + schema description** (so M8/M9 modeling isn’t fighting moving targets).
 
 ---
+
 ## Course map (CRISP-DM alignment)
-- Unit 1 (M1–M5): Business Understanding + Data Understanding → **Assignment 1** DUE 2026-02-16
+- Unit 1 (M1–M5): Business Understanding + Data Understanding → **Assignment 1 (DONE, 100%)**
 - Unit 2 (M6–M9): Data Preparation + Modeling → **Assignment 2**
 - Unit 3 (M10–M13): Evaluation + Deployment → **Assignment 3**
 - M14: wrap-up / synthesis
@@ -30,42 +44,47 @@
 - [x] Tracker/diary/decision log created
 
 ### M2 — Business Understanding (Part 1)
-- [x] Module content completed (videos/readings/quiz)
-- [~] Stakeholders + decision(s) they need to make (drafted; tighten decision statements to 1–2)
-- [~] Initial success criteria draft (business + technical) (drafted; refine thresholds + feasibility)
-- [x] Add 3–5 assumptions/risks to docs (drafted; needs minor refresh)
+- [x] Module content completed
+- [x] Stakeholders + decisions drafted
+- [x] Initial success criteria drafted
+- [x] Assumptions/risks drafted
 
 ### M3 — Business Understanding (Part 2)
-- [x] Module overview complete
-- [x] Background section reading complete
-- [x] Constraints + risks refined (short + realistic)
-- [ ] “Perverse incentives” check (what could be misinterpreted / gamed)
+- [x] Background + constraints/risks refined
 - [x] Data science goals + success criteria drafted
 - [x] Project plan drafted
-- [x] Module 3 process diary entry written + submitted
-
+- [x] Module 3 process diary submitted (100%)
 
 ### M4 — Data Understanding (Part 1)
 - [x] Load demo dataset into Postgres (local)
-- [x] Confirm keys, grains, and join routes (subject_id / hadm_id / stay_id)
-- [x] Table inventory: rowcounts + coverage (event density summaries; initial missingness checks queued)
-- [x] ERD v1 drafted (DBeaver) + exported to PNG
-- [x] Apply PK/FK constraints in local schema for validation + tooling (DBeaver ERD)
-- [x] Save SQL artifacts in `data/sql/` (01 data description, 02 relationship discovery/validation, 03 constraints)
+- [x] Confirm keys/grains/join routes (subject_id / hadm_id / stay_id)
+- [x] ERD v1 exported
+- [x] PK/FK constraints applied locally for guardrails/tooling
+- [x] SQL artifacts saved in `data/sql/` (01/02/03…)
 
-### M5 — Data Understanding (Part 2) + **Assignment 1 due**
-- [x] Assignment 1 report assembled (BU + DU sections)
-- [x] EDA artifacts included (figures/tables + data quality summary)
-- [x] Decision log + assumptions/risks updated and referenced in report
+### M5 — Data Understanding (Part 2) + Assignment 1
+- [x] Assignment 1 report submitted
+- [x] Assignment 1 graded (100%)
+- [x] Show-your-work artifacts submitted
 
-### M6 — Data Prep (Part 1)
-### M7 — Data Prep (Part 2)
+### M6 — Data Preparation (Part 1)
+- [x] Data Preparation quiz graded (100%)
+- [x] Prepared dataset direction established (stay_id grain, 0–24h window)
+- [x] Early-window feature engineering pipeline exists (SQL scripts + derived tables)
+- [~] Documentation for “Select Data” + “Clean Data” (exists in pieces; consolidate)
+
+### M7 — Data Preparation (Part 2) + Process Diary
+- [ ] Module 7 process diary submitted (overdue)
+- [ ] “Construct Data” documentation: feature definitions + leakage rule + missingness strategy
+- [ ] “Integrate Data” documentation: join keys, grain, and integration logic
+- [ ] “Format Data” decision: modeling-ready table spec (columns, types, encoding, missing handling)
+
 ### M8 — Modeling (Part 1)
-### M9 — Modeling (Part 2) + **Assignment 2 due**
+### M9 — Modeling (Part 2) + Assignment 2
 ### M10 — Evaluation (Part 1)
 ### M11 — Evaluation (Part 2)
 ### M12 — Deployment (Part 1)
-### M13 — Deployment (Part 2) + **Assignment 3 due**
+### M13 — Deployment (Part 2) + Assignment 3
 ### M14 — Wrap-up
 
 ---
@@ -73,54 +92,47 @@
 ## Milestones (submission readiness checks)
 
 ### Assignment 1 — Business & Data Understanding (M5)
-**Must have:**
-- [x] `reports/M05_assignment1.md` (or PDF)
-- [x] Notebooks: data inventory + EDA (or SQL-first equivalent with saved outputs)
-- [x] `docs/` updated: assumptions/risks + decisions + process diary entry
+- [x] Submitted
+- [x] Graded **100%**
+- [x] Show-your-work submitted
 
-
-### Assignment 2 — Data Prep & Modeling (M9)
+### Assignment 2 — Data Preparation & Modeling (M9)
 **Must have:**
-- [ ] `reports/M09_assignment2.md` (or PDF)
-- [ ] Prepared dataset(s) in `data/processed/`
-- [ ] Modeling notebooks + metrics artifacts
-- [ ] Decisions logged (feature choices, model selection)
+- [ ] Prepared dataset(s) in `data/processed/` with a stable schema (v1)
+- [ ] Data preparation documentation (selection + cleaning + feature construction + integration + formatting)
+- [ ] Modeling notebook(s) + baseline metrics
+- [ ] Decisions logged (feature choices, model selection, evaluation approach)
+- [ ] Report/Writeup submitted (per course instructions)
 
 ### Assignment 3 — Final Report + Slides (M13)
 **Must have:**
-- [ ] `reports/M13_assignment3.md` (or PDF)
-- [ ] `reports/M13_exec_slides.pptx` (or PDF)
-- [ ] Deployment + monitoring plan section
-- [ ] Reflection + process diary entry 3
-- [ ] Repo integrated and tidy
+- [ ] Final report (PDF)
+- [ ] Slides deck (PPTX/PDF)
+- [ ] Deployment + monitoring plan
+- [ ] Reflection + process diary entry
 
 ---
 
-## Notes / parking lot
+## Notes / parking lot (updated)
 
-### Open questions (next to resolve)
-- Unit of analysis:
-  - ICU stay-level (`stay_id`) vs admission-level (`hadm_id`) vs patient-level (`subject_id`)
-  - If “readmission” is a primary outcome, definition probably needs to be admission-level, then linked back to ICU exposure
-- Outcomes feasibility with N≈100:
-  - Hospital readmission / return visits: early EDA suggests this might actually have enough signal, but confirm counts formally
-  - Prolonged ICU stay: pick a literature-backed threshold (likely varies by ICU type/condition), then sanity-check distribution in the demo cohort
-- Cohort strategy:
-  - ICU subtypes/pathways: cardiac, neuro, trauma, sepsis, other
-  - Risk: over-segmentation → fallback to fewer buckets or pooled analysis with “reason codes”
-- Early-window feature engineering (avoid leakage):
-  - Candidate window: 6–24 hours after ICU admit
-  - Feasibility depends on early labs/vitals density in demo tables
-- Data completeness / measurement bias:
-  - How sparse are `chartevents`, `labevents`, `inputevents`, `procedureevents`?
-  - Is missingness systematic (sicker patients get measured more → bias)?
-- Stakeholder decision clarity:
-  - Tighten to 1–2 decisions (ex: “which sub-cohorts drive disproportionate ICU resource use?” and “what early signals predict prolonged stay/readmission risk?”)
-- Workflow/tooling:
-  - Postgres-first EDA for repeatability + cleaner joins
-  - ERD is a requirement for staying sane once SQL exploration starts
+### What’s already solid (don’t reopen unless necessary)
+- Grain: ICU stay (`stay_id`) is the primary modeling unit (for current pipeline).
+- Predictor timing: early-window restriction (0–24h from ICU `intime`) prevents leakage.
+- Prepared dataset exists as a stable “v1” artifact (CSV + derived table).
 
-### Things to look up later
-- Literature thresholds for “prolonged ICU stay” (overall + condition-specific where relevant)
-- ICD-based cohort mapping starter list (Cardiac/Neuro/Trauma/Sepsis/Other)
-- Optional: sanity-check cohort definitions with a domain expert (if needed)
+### Current focus for M7 (Data Preparation documentation)
+- Select Data:
+  - What tables/fields are included for v1 modeling and why (and what is excluded).
+- Clean Data:
+  - Type normalization strategy (text-ingest → derived casts), timestamp sanity checks, missingness handling.
+- Construct Data:
+  - How vitals features are constructed (min/max/mean/first/last), missingness indicators, measurement-density features.
+- Integrate Data:
+  - How admissions context joins to icustays; how chartevents aggregates to stay grain.
+- Format Data:
+  - Final modeling table layout, column list, outcome definition, encoding and missing handling.
+
+### Open questions (only if time allows)
+- Sensitivity check on prolonged LOS threshold (optional; only if it affects modeling credibility).
+- Whether to pursue readmission/return-risk as a secondary outcome later (likely hadm_id grain).
+

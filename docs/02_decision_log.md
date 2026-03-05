@@ -177,5 +177,85 @@ Purpose: Record key project decisions (what, why, tradeoffs) so future-me (and g
 - **Implications:** Keep the figure export stable (file name + path) and update the appendix if the core table set changes.
 
 
+--- 
+## D013 — Lock modeling grain for initial pipeline: ICU sta(`stay_id`)
+- **Date:** 2026-02-22
+- **Decision:** For the initial modeling pipeline and Assignment 1 Data Understanding outputs, treat the ICU stay (stay_id) as the primary unit of analysis.
+- **Rationale:**
+  - The core operational question (resource use / ICU LOS) is most naturally defined at the ICU-stay level.
+  - Empirical validation: `icu.icustays` contains complete `intime/outtime/los` with no negative LOS records (per integrity checks), and `stay_id` is unique for the demo cohort.
+  - Enables an “early window” predictor strategy anchored to intime, which is necessary for leakage control.
+
+- **Tradeoffs / risks:**
+  - Some outcomes (e.g., readmission/return risk) may map more cleanly to admission (`hadm_id`) or patient (`subject_id`) and may remain secondary/optional.
+  - ICU stays can be influenced by downstream system constraints (stepdown/ward capacity), so interpretations must avoid implying the ICU fully controls LOS.
+
+- **Implications:**
+  - All event tables must be aggregated or windowed to stay_id before modeling.
+  - The derived dataset will be one-row-per-stay and exported as a modeling matrix.
+  
+## D014 — Enforce an explicit anti-leakage rule: predictors limited to first 24h from ICU intime
+
+- **Date:** 2026-02-22
+- **Decision**: Define the predictor window as [ICU intime, ICU intime + 24 hours) and restrict all constructed predictors to this window.
+- **Rationale**:
+  - Goal is early risk stratification, so predictors must reflect what is plausibly available at/near a fixed prediction time.
+  - Prevents “full-stay leakage” (longer stays inherently accumulate more charting/labs; using full-stay counts would indirectly encode LOS).
+  - The demo dataset supports this choice empirically: core vitals have high presence within 24 hours (mid-90s to ~100% coverage for key items in the data quality outputs).
+
+- **Tradeoffs / risks:
+  - Some clinically useful predictors may not appear in the first 24 hours for all patients, which can increase missingness.
+  - Clinical charting time may reflect workflow (ED vs ICU documentation), so strict windowing can exclude some values that are clinically “known” but documented earlier.
+
+- **Implications**:
+  - Feature scripts must explicitly filter by charttime >= intime AND charttime < intime + interval '24 hour'.
+  - Missingness indicators are treated as first-class features rather than ignored.
+
+## D015 — Materialize reproducible derived tables in `derived` schema + normalize key types to INT
+
+- **Date**: 2026-02-22
+- **Decision**: Materialize feature and modeling datasets as versioned tables in a dedicated schema:
+  - `derived.vitals_24h_by_stay_v1`
+  - `derived.icu_stay_modeling_24h_v1` and normalize key fields to INT in derived tables due to text-loaded source tables.
+
+- **Rationale**:
+  - Reproducibility: running 07 then 08 produces the same artifacts deterministically; tables can be validated and exported consistently.
+  - Auditability: derived tables provide a stable reference for figures/tables in the report and reduce “notebook drift.”
+  - Practical constraint: source tables were ingested as TEXT for speed; casting/normalization prevents join errors (observed text = integer join error during initial build).
+  - Pipeline sanity checks succeeded: final modeling table has 140 rows / 140 distinct stays, and the prolonged LOS (>=8d) label yields 16 positives (11.4%).
+
+- **Tradeoffs / risks**:
+  - Derived tables can go stale if scripts change but tables are not rebuilt; requires discipline to rerun scripts after edits.
+  - Type casting can mask upstream ingestion issues; mitigated by documenting the “quick ingest” choice and adding integrity checks.
+
+- **Implications**:
+  - Scripts include DROP TABLE IF EXISTS …; CREATE TABLE … AS …; so rebuilds are simple and explicit.
+  - Use NULLIF(TRIM(x),'')::int for keys to avoid empty-string casting failures.
+  - Export artifact for downstream work: data/processed/icu_stay_modeling_24h_v1.csv.
+  
+ ---
+## D016 — Define “prolonged ICU stay” as LOS ≥ 8 days and build a leakage-safe 0–24h modeling table
+- **Date:** 2026-02-25
+- **Decision:** Define prolonged ICU length of stay as **ICU LOS ≥ 8 days** and create a **stay_id–grain early-window (0–24h) feature set** from `icu.chartevents`, producing:
+  - `derived.vitals_24h_by_stay`
+  - `derived.icu_stay_modeling_24h_v1`
+  - `data/processed/icu_stay_modeling_24h_v1.csv`
+- **Rationale:**
+  - A binary “prolonged stay” outcome is operationally interpretable for ICU leadership (capacity / bed-days risk).
+  - Literature commonly uses a **1-week threshold** operationally (≥7 days; i.e., **8+ days**) and explicitly discusses why this cut-off is defensible (clinical + methodological reasons, avoiding domination by short stays).
+  - The demo cohort supports this definition with workable prevalence (**16/140 = 11.4%**), which is enough to proceed with simple modeling without collapsing into “too rare to analyze.”
+- **Key source support:**
+  - Frontiers in Medicine article (ICU LoS modeling) defines prolonged ICU stay using a **7-day cut-off (8+ days)** and explains why (short stays confounded by bed availability; skewed distribution issues). :contentReference[oaicite:0]{index=0}
+- **Leakage control / constraints:**
+  - Features are restricted to **0–24h after ICU `intime`** (and 0–6h counts as a secondary density signal).
+  - This replaces any full-stay proxy features (e.g., total `n_chartevents` over the entire stay) that would leak future information.
+- **Tradeoffs / risks:**
+  - Thresholds vary across clinical literature and ICU populations; this choice is a pragmatic “common line” rather than a universal clinical standard.
+  - Inference remains associative; model results should not be interpreted causally.
+- **What would change my mind:**
+  - If later sensitivity checks show the 8-day cutoff produces unstable results in this demo cohort, pivot to:
+    - a percentile-based threshold (e.g., top decile of LOS), or
+    - a different clinically common threshold (e.g., ≥14 days) *if* it still yields viable positive counts.
+---
 
 
