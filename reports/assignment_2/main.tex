@@ -1,0 +1,724 @@
+\documentclass[12pt]{article}
+
+% ==========================================
+% Assignment 2 main report template
+% Styled to match Assignment 1 as closely as possible
+% while aligning the structure to Assignment 2.
+%
+% IMPORTANT:
+% - Keep this as a professional technical report, not a notebook transcript.
+% - Minimal code in report; complete code belongs in the separate repository.
+% - Use comments in this file as writing guidance, not as content.
+% ==========================================
+
+% ==========================================
+% Packages (simple + professional)
+% ==========================================
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{float}
+\usepackage{enumitem}
+\usepackage[numbers]{natbib}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{tabularx}
+\usepackage{ragged2e}
+\usepackage[table]{xcolor}
+\usepackage{amsmath}
+\usepackage{ifthen}
+
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+
+% ==========================================
+% Metadata
+% ==========================================
+\newcommand{\ProjectTitle}{Assignment 2: Data Preparation and Modeling Report}
+\newcommand{\CourseName}{CMPINF2910: Case Studies in Data Science}
+\newcommand{\StudentName}{Luis Gonzalez}
+\newcommand{\InstructorName}{Matt Burton}
+\newcommand{\DueDate}{Mar 23, 2026}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+    pdftitle={\ProjectTitle},
+    pdfauthor={\StudentName}
+}
+
+% ==========================================
+% Header / Footer
+% ==========================================
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\CourseName}
+\rhead{\StudentName}
+\cfoot{\thepage\ of \pageref{LastPage}}
+
+% ==========================================
+% Small helper macros
+% ==========================================
+\newcommand{\placeholder}[1]{\textit{[INSERT #1 HERE]}}
+\newcommand{\los}{$\geq$8-day ICU LOS}
+\newcommand{\vone}{v1}
+\newcommand{\voneone}{v1.1}
+
+\begin{document}
+
+% ==========================================
+% Title Page
+% ==========================================
+\begin{titlepage}
+    \centering
+    {\Large \textbf{\ProjectTitle}\par}
+    \vspace{1.0cm}
+    {\large Course: \CourseName\par}
+    \vspace{0.3cm}
+    {\large Student: \StudentName\par}
+    \vspace{0.3cm}
+    {\large Instructor: \InstructorName\par}
+    \vspace{0.3cm}
+    {\large Date: \DueDate\par}
+    \vfill
+    {\small CRISP-DM Phases Covered: Data Preparation and Modeling}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% =========================================================
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+\label{sec:intro}
+
+% ASSIGNMENT 2 INTRODUCTION REQUIREMENT:
+% Reconnect the report to Assignment 1 by:
+% - briefly recapping organizational objectives and data science goals
+% - summarizing the key exploration findings that shaped data preparation/modeling
+% - previewing the structure of this report
+%
+% WRITING TARGET:
+% ~0.5-1 page. This should sound like the opening of a technical report, not an assignment memo.
+%
+% PRACTICAL NOTE:
+% Keep the intro focused on project context, Assignment 1 findings, and what this report covers.
+% Do not front-load the whole methodology section here.
+%
+% YOUR PROJECT-SPECIFIC THREAD TO CARRY FORWARD:
+% - ICU stay-level analysis
+% - early prediction window
+% - prolonged ICU stay operational framing
+% - Assignment 1 finding that the demo cohort is small, so results must be interpreted carefully
+
+This report documents the Data Preparation and Modeling phases of the ICU Patient Care Analysis project, building directly on the Business Understanding and Data Understanding work completed in Assignment 1. The project remains framed as an early risk-identification problem focused on prolonged ICU length of stay, using the MIMIC-IV Clinical Database Demo as a realistic but deliberately limited technical environment for testing the workflow. In Assignment 1, the main outcome of the exploration phase was not just a set of descriptive findings. More importantly, it established the grain of analysis, the early prediction window, the likely sources of measurement and documentation bias, and the practical limits imposed by a small demo cohort.
+
+Those earlier findings shaped the rest of the project in a fairly direct way. The work in this report is built around ICU stay as the unit of analysis, an early predictor window anchored to ICU admission time, and a leakage-aware modeling posture that treats interpretability and defensibility as more important than chasing a flashy metric. The data preparation work therefore focuses on turning raw multi-table ICU data into a stable, model-ready stay-level dataset. The modeling work then builds on that prepared dataset using a small, deliberate comparison set rather than a broad algorithm sweep.
+
+The report is organized in two main parts. \Cref{sec:data_prep} documents how the modeling dataset was selected, cleaned, constructed, integrated, and formatted. \Cref{sec:modeling} documents the modeling strategy, model development, final evaluation, and model recommendation. The report closes with a conclusion that ties the technical results back to the original project goals and outlines the most reasonable next steps.
+
+\newpage
+
+% =========================================================
+\section{Data Preparation}
+\label{sec:data_prep}
+
+% ASSIGNMENT 2 EXPECTATION:
+% Section 1 should be about 5-7 pages total.
+% Think of it as a proof that the final modeling dataset is relevant, coherent,
+% reproducible, and safe to hand off into modeling.
+%
+% INTERNAL WRITING FORMULA:
+% decision -> rationale -> implementation -> validation/impact -> limitation
+
+% ---------------------------------------------------------
+\subsection{Data Selection Rationale}
+\label{subsec:data_selection}
+
+% WHAT THIS SECTION MUST PROVE:
+% - the chosen data is relevant to the project goal
+% - the scope was intentionally bounded
+% - inclusion/exclusion choices support the Assignment 1 data science goals
+%
+% WHAT TO DISCUSS:
+% - variable selection
+% - temporal selection
+% - record selection
+% - sampling strategy if applicable
+% - explicit connection back to Assignment 1 goals
+%
+% PROJECT-SPECIFIC NOTES:
+% - ICU stay grain
+% - 0-24h predictor window
+% - v1 scope and what was deferred at first
+% - why v1.1 refresh was targeted rather than a full rebuild
+
+\subsubsection*{Analytical Scope}
+\placeholder{scope paragraph based on 01\_select\_data\_rationale.md}
+
+\subsubsection*{Unit of Analysis and Temporal Scope}
+\placeholder{grain and prediction window paragraph}
+
+\subsubsection*{Variables Retained, Deferred, and Added}
+\placeholder{selection rationale paragraph covering original v1 scope and later v1.1 refresh}
+
+\subsubsection*{Connection Back to Assignment 1 Goals}
+\placeholder{short paragraph reconnecting selected data to Assignment 1 business / technical goals}
+
+% Optional table: useful if you want a concise selection summary in the final report.
+\begin{table}[H]
+\centering
+\small
+\caption{High-level data selection decisions for the final Assignment 2 workflow.}
+\label{tab:data_selection_summary}
+\begin{tabular}{@{}L{3.1cm}L{4.4cm}L{4.8cm}L{2.4cm}@{}}
+\toprule
+\textbf{Decision area} & \textbf{What was included} & \textbf{What was excluded or deferred} & \textbf{Why it matters} \\
+\midrule
+Analytical grain & \placeholder{e.g., ICU stay / stay\_id} & \placeholder{e.g., patient-level or admission-level modeling for v1} & \placeholder{keep outcome + predictors aligned} \\
+Prediction timing & \placeholder{e.g., 0--24h from ICU intime} & \placeholder{later-stay information} & \placeholder{leakage control} \\
+Core source families & \placeholder{e.g., icustays, admissions, chartevents, small lab panel} & \placeholder{e.g., diagnoses, meds, procedures deferred} & \placeholder{scope discipline} \\
+Context variables & \placeholder{e.g., grouped admission/careunit context} & \placeholder{raw sparse categories as main predictors} & \placeholder{stability + interpretability} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+\subsection{Data Cleaning Process}
+\label{subsec:data_cleaning}
+
+% WHAT THIS SECTION MUST PROVE:
+% - quality issues were identified and handled systematically
+% - cleaning decisions are concrete, not hand-wavy
+%
+% WHAT TO DISCUSS:
+% - missing data treatment
+% - outlier handling
+% - inconsistency resolution
+% - error correction
+% - impact assessment
+%
+% PROJECT-SPECIFIC NOTES:
+% - text-ingested schema
+% - timestamp filtering
+% - null/blank handling
+% - preserve source provenance
+% - v1.1 did NOT change the cleaning philosophy, only extended the same rules
+
+\subsubsection*{Starting Data Quality Position}
+\placeholder{short opening paragraph based on 02\_clean\_data\_report.md}
+
+\subsubsection*{Cleaning Rules Applied}
+\begin{itemize}[leftmargin=1.5em]
+    \item \placeholder{type normalization / defensive casting}
+    \item \placeholder{null and blank handling}
+    \item \placeholder{timestamp validation and early-window filtering}
+    \item \placeholder{how source tables were preserved and derived tables used instead}
+\end{itemize}
+
+\subsubsection*{Impact on the Final Dataset}
+\placeholder{impact paragraph; quantify where useful}
+
+% Optional QA table.
+\begin{table}[H]
+\centering
+\small
+\caption{Selected data quality issues and how they were handled.}
+\label{tab:cleaning_summary}
+\begin{tabular}{@{}L{3.3cm}L{4.4cm}L{4.3cm}L{2.2cm}@{}}
+\toprule
+\textbf{Issue} & \textbf{Observed problem} & \textbf{Treatment used} & \textbf{Impact} \\
+\midrule
+Typing / schema & \placeholder{TEXT-ingested columns, key casting, timestamp casting} & \placeholder{normalize in queries / derived tables} & \placeholder{enabled safe joins} \\
+Timing alignment & \placeholder{events before ICU intime, LOS checks} & \placeholder{filter to early window} & \placeholder{reduced leakage risk} \\
+Missingness & \placeholder{systematic missingness patterns} & \placeholder{kept visible; defer learned imputation to modeling pipeline} & \placeholder{more honest signal} \\
+Source preservation & \placeholder{avoid mutating raw tables} & \placeholder{use derived schema} & \placeholder{traceability} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+\subsection{Feature Engineering}
+\label{subsec:feature_engineering}
+
+% WHAT THIS SECTION MUST PROVE:
+% - engineered features were created for good analytical reasons
+% - feature logic matches the prediction-time reality of the project
+%
+% WHAT TO DISCUSS:
+% - derived features
+% - transformations
+% - temporal features
+% - domain-specific features
+% - justification
+%
+% PROJECT-SPECIFIC NOTES:
+% - density features
+% - vital summaries
+% - missingness indicators
+% - grouped context
+% - small lab panel added in v1.1
+% - keep this organized by feature family, not by raw column dump
+
+\subsubsection*{Feature Engineering Approach}
+\placeholder{opening paragraph based on 03\_construct\_data\_features.md}
+
+\subsubsection*{Feature Families}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Measurement density:} \placeholder{e.g., n\_chartevents\_6h, n\_chartevents\_24h}
+    \item \textbf{Vital-sign summaries:} \placeholder{first / mean / min / max / last}
+    \item \textbf{Missingness indicators:} \placeholder{has\_* flags and missing\_core\_vitals\_24h\_count}
+    \item \textbf{Grouped context:} \placeholder{admission\_type\_grp, first\_careunit\_grp}
+    \item \textbf{Early lab panel:} \placeholder{creatinine, WBC, hemoglobin, lactate}
+\end{itemize}
+
+\subsubsection*{Why These Features Were Worth Adding}
+\placeholder{paragraph tying feature logic to project goals and explaining the v1.1 refresh}
+
+% Optional table summarizing feature families.
+\begin{table}[H]
+\centering
+\small
+\caption{Main feature families included in the final \voneone{} modeling dataset.}
+\label{tab:feature_families}
+\begin{tabular}{@{}L{3.0cm}L{4.6cm}L{4.2cm}L{2.5cm}@{}}
+\toprule
+\textbf{Feature family} & \textbf{Examples} & \textbf{Why included} & \textbf{Timing rule} \\
+\midrule
+Measurement density & \placeholder{e.g., counts of early charting activity} & \placeholder{captures workflow / acuity signal} & \placeholder{0--24h} \\
+Vitals summaries & \placeholder{HR, RR, SpO2, Temp, MAP summaries} & \placeholder{early physiologic state} & \placeholder{0--24h} \\
+Missingness indicators & \placeholder{has\_* flags, missing counts} & \placeholder{missingness may be informative} & \placeholder{0--24h} \\
+Grouped context & \placeholder{admission / careunit groups} & \placeholder{cleaner operational context} & \placeholder{known near admission} \\
+Early labs & \placeholder{creatinine, WBC, hemoglobin, lactate} & \placeholder{better clinical mix in v1.1} & \placeholder{0--24h} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+\subsection{Data Integration and Final Preparation}
+\label{subsec:data_integration}
+
+% WHAT THIS SECTION MUST PROVE:
+% - the final modeling dataset preserves the correct grain
+% - integration was done safely
+% - formatting / handoff into modeling was deliberate
+%
+% WHAT TO DISCUSS:
+% - integration approach
+% - data formatting
+% - final dataset characteristics
+% - pipeline overview
+%
+% IMPORTANT CHECKLIST TENSION:
+% The assignment guide's generic prompt mentions split discussion here.
+% In your project, keep the language honest:
+% - Section 1 should describe the final dataset contract and modeling handoff assumptions.
+% - Section 2 should document the actual training / validation / test workflow.
+% - Be explicit that learned preprocessing was fit on training data only in the modeling pipeline.
+
+\subsubsection*{Integration Approach}
+\placeholder{paragraph based on 04\_integrate\_data\_notes.md}
+
+\subsubsection*{Final Modeling Artifact}
+The final modeling artifact used for Assignment 2 is:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \texttt{derived.icu\_stay\_modeling\_24h\_v1\_1}
+    \item \texttt{data/processed/icu\_stay\_modeling\_24h\_v1\_1.csv}
+\end{itemize}
+
+\subsubsection*{Final Dataset Characteristics}
+\placeholder{paragraph summarizing number of rows, number of features, target distribution, and audit-only fields}
+
+% Good place for a summary table with real numbers once ready.
+\begin{table}[H]
+\centering
+\small
+\caption{Final modeling dataset characteristics.}
+\label{tab:final_dataset_characteristics}
+\begin{tabular}{@{}L{5.3cm}L{7.0cm}@{}}
+\toprule
+\textbf{Characteristic} & \textbf{Value} \\
+\midrule
+Final dataset artifact & \texttt{icu\_stay\_modeling\_24h\_v1\_1.csv} \\
+Analytical grain & \placeholder{one row per ICU stay / stay\_id} \\
+Number of records & \placeholder{insert final row count} \\
+Number of features & \placeholder{insert final predictor count} \\
+Target definition & \placeholder{prolonged\_los\_8d = 1 if LOS >= 8 days} \\
+Target prevalence & \placeholder{insert class balance} \\
+Audit-only fields retained & \placeholder{IDs, timings, raw context kept for traceability} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Preparation Pipeline Overview}
+% Keep this brief in the body. A full flowchart can go in the appendix if you make one.
+\placeholder{high-level pipeline paragraph from raw tables to final CSV}
+
+\subsubsection*{Leakage-Safe Handoff into Modeling}
+\placeholder{brief paragraph stating that the prepared dataset is exported as a stable analytical table, while learned preprocessing such as imputation/scaling/encoding is performed inside the modeling pipeline fit on training data only}
+
+\newpage
+
+% =========================================================
+\section{Modeling}
+\label{sec:modeling}
+
+% ASSIGNMENT 2 EXPECTATION:
+% Section 2 should be about 5-7 pages total.
+% The report should sound like a disciplined modeling workflow, not a notebook log.
+%
+% INTERNAL WRITING FORMULA:
+% claim -> rationale -> implementation -> evidence -> implication
+
+% ---------------------------------------------------------
+\subsection{Modeling Strategy}
+\label{subsec:modeling_strategy}
+
+% WHAT THIS SECTION MUST PROVE:
+% - problem type, candidate algorithms, metrics, and validation design fit the project
+%
+% WHAT TO DISCUSS:
+% - problem framing
+% - algorithm selection rationale
+% - evaluation strategy
+% - computational considerations
+% - connection to Assignment 1 technical goals
+%
+% PROJECT-SPECIFIC NOTES:
+% - binary classification
+% - prolonged ICU stay target
+% - majority baseline + logistic regression + random forest
+% - subject-aware split
+% - training-only preprocessing
+% - training-only threshold tuning
+% - metrics beyond accuracy
+
+\subsubsection*{Problem Framing}
+\placeholder{paste / adapt from 06\_modeling\_strategy.md}
+
+\subsubsection*{Model Portfolio}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Baseline:} \placeholder{majority-class baseline}
+    \item \textbf{Interpretable model:} \placeholder{logistic regression}
+    \item \textbf{Nonlinear comparison model:} \placeholder{random forest}
+\end{itemize}
+
+\subsubsection*{Evaluation Design}
+\placeholder{describe train/test split, grouped CV, held-out test, metrics, and threshold tuning in plain language}
+
+% Optional strategy table.
+\begin{table}[H]
+\centering
+\small
+\caption{Final modeling strategy at a glance.}
+\label{tab:modeling_strategy}
+\begin{tabular}{@{}L{3.4cm}L{8.9cm}@{}}
+\toprule
+\textbf{Decision area} & \textbf{Final choice} \\
+\midrule
+Problem type & \placeholder{binary classification} \\
+Prediction target & \placeholder{prolonged ICU LOS definition} \\
+Prediction window & \placeholder{first 24h after ICU admission} \\
+Candidate models & \placeholder{baseline, logistic regression, random forest} \\
+Validation design & \placeholder{subject-aware split + grouped CV within training} \\
+Primary ranking metric & \placeholder{F1-score} \\
+Supporting metrics & \placeholder{precision, recall, ROC-AUC, PR-AUC, Brier, confusion matrix} \\
+Threshold handling & \placeholder{training-only threshold tuning} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ---------------------------------------------------------
+\subsection{Model Development}
+\label{subsec:model_development}
+
+% WHAT THIS SECTION MUST PROVE:
+% - baseline and candidate models were built systematically
+%
+% WHAT TO DISCUSS:
+% - baseline model
+% - primary models
+% - algorithm settings
+% - training process / issues
+% - tuning approach
+% - computational notes
+%
+% PROJECT-SPECIFIC NOTES:
+% - include actual selected hyperparameters
+% - mention v1.1 rerun and why it happened
+% - mention threshold issue and correction
+% - do not dump code
+
+\subsubsection*{Baseline Model}
+\placeholder{majority baseline paragraph}
+
+\subsubsection*{Primary Models and Tuning}
+\placeholder{paragraph on logistic regression and random forest development}
+
+% Fill these with your actual final settings.
+\begin{table}[H]
+\centering
+\small
+\caption{Final model configurations carried into held-out evaluation.}
+\label{tab:model_configs}
+\begin{tabular}{@{}L{3.2cm}L{3.8cm}L{2.3cm}L{3.8cm}@{}}
+\toprule
+\textbf{Model} & \textbf{Key settings} & \textbf{Threshold} & \textbf{Notes} \\
+\midrule
+Majority baseline & \placeholder{most frequent class} & --- & \placeholder{benchmark only} \\
+Logistic regression & \placeholder{e.g., C = 1.0, class\_weight = None} & \placeholder{0.52} & \placeholder{interpretable benchmark} \\
+Random forest & \placeholder{e.g., n\_estimators = 300, depth / leaf settings} & \placeholder{0.18} & \placeholder{nonlinear comparison} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Training Issues and Corrections}
+\placeholder{brief paragraph on first final-model pass, threshold issue, targeted v1.1 refresh, and why the corrected workflow is the one reported}
+
+% ---------------------------------------------------------
+\subsection{Model Evaluation and Comparison}
+\label{subsec:model_evaluation}
+
+% WHAT THIS SECTION MUST PROVE:
+% - models were compared rigorously on held-out data
+% - metrics fit the problem and the class balance
+%
+% WHAT TO DISCUSS:
+% - held-out performance metrics
+% - comparison logic
+% - diagnostics
+% - robustness / caveats
+% - organizational interpretation
+%
+% PROJECT-SPECIFIC NOTES:
+% - held-out test had only 2 positives
+% - random forest had higher held-out F1
+% - logistic regression had much better discrimination and CV profile
+% - recommendation should not be based on one fragile split alone
+
+\subsubsection*{Held-Out Results}
+\placeholder{opening paragraph summarizing the held-out comparison}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Held-out model comparison on the final \voneone{} dataset.}
+\label{tab:heldout_comparison}
+\begin{tabular}{@{}L{3.0cm}rrrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{ROC-AUC} & \textbf{PR-AUC} & \textbf{Brier} \\
+\midrule
+Majority baseline & \placeholder{0.9474} & \placeholder{0.0000} & \placeholder{0.0000} & \placeholder{0.0000} & \placeholder{0.5000} & \placeholder{0.0526} & \placeholder{0.0526} \\
+Logistic regression & \placeholder{0.8947} & \placeholder{0.0000} & \placeholder{0.0000} & \placeholder{0.0000} & \placeholder{0.8611} & \placeholder{0.2262} & \placeholder{0.0703} \\
+Random forest & \placeholder{0.7368} & \placeholder{0.1000} & \placeholder{0.5000} & \placeholder{0.1667} & \placeholder{0.5833} & \placeholder{0.1025} & \placeholder{0.0634} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Cross-Validation Context}
+\placeholder{brief paragraph explaining why grouped CV still matters given the tiny held-out positive class}
+
+% Optional: if you want a concise CV summary table in the body.
+\begin{table}[H]
+\centering
+\small
+\caption{Grouped cross-validation summary for the two primary models.}
+\label{tab:cv_summary}
+\begin{tabular}{@{}L{3.0cm}rrrrrrr@{}}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} & \textbf{ROC-AUC} & \textbf{PR-AUC} & \textbf{Brier} \\
+\midrule
+Logistic regression & \placeholder{0.8302} & \placeholder{0.5083} & \placeholder{0.4567} & \placeholder{0.4111} & \placeholder{0.6977} & \placeholder{0.4452} & \placeholder{0.1507} \\
+Random forest & \placeholder{0.8742} & \placeholder{0.2000} & \placeholder{0.0500} & \placeholder{0.0800} & \placeholder{0.7611} & \placeholder{0.4263} & \placeholder{0.1139} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection*{Diagnostic Interpretation}
+% Add only the figures that actually help the reader. Avoid bloating the report.
+% Use IfFileExists so the document still compiles while figures are being added later.
+\begin{figure}[H]
+\centering
+\IfFileExists{figures/model_v1_1_roc_curve_comparison.png}
+  {\includegraphics[width=0.85\linewidth]{figures/model_v1_1_roc_curve_comparison.png}}
+  {\fbox{Placeholder: add ROC curve comparison figure here}}
+\caption{Held-out ROC curve comparison for the final \voneone{} model set.}
+\label{fig:roc_comparison}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{figures/model_v1_1_precision_recall_curve_comparison.png}
+  {\includegraphics[width=0.85\linewidth]{figures/model_v1_1_precision_recall_curve_comparison.png}}
+  {\fbox{Placeholder: add precision-recall curve comparison figure here}}
+\caption{Held-out precision-recall curve comparison for the final \voneone{} model set.}
+\label{fig:pr_comparison}
+\end{figure}
+
+% Add confusion matrices / coefficient / importance plots either here or in the appendix.
+\placeholder{paragraph interpreting diagnostics and the main caveat about the tiny held-out positive class}
+
+% ---------------------------------------------------------
+\subsection{Model Selection and Recommendations}
+\label{subsec:model_selection}
+
+% WHAT THIS SECTION MUST PROVE:
+% - the selected model is justified by evidence and tradeoffs
+%
+% WHAT TO DISCUSS:
+% - chosen model
+% - why it was selected
+% - what the main caveat is
+% - what the next practical step would be
+%
+% PROJECT-SPECIFIC NOTES:
+% - final recommendation = logistic regression
+% - justify from the full picture, not one split
+% - keep this concise and decisive
+
+\subsubsection*{Recommended Model}
+\placeholder{state the final recommendation clearly: logistic regression}
+
+\subsubsection*{Why This Model Was Chosen}
+\placeholder{brief tradeoff paragraph covering discrimination, CV, interpretability, and project fit}
+
+\subsubsection*{Main Limitation Behind the Recommendation}
+\placeholder{brief paragraph about small held-out test set and only 2 positives}
+
+\subsubsection*{Practical Next Step}
+\placeholder{brief paragraph on what should happen next if this moved beyond the capstone}
+
+% =========================================================
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+\label{sec:conclusion}
+
+% ASSIGNMENT 2 CONCLUSION REQUIREMENT:
+% - synthesize key findings from data preparation and modeling
+% - evaluate how well the work met Assignment 1 technical success criteria
+% - discuss organizational implications
+% - recommend next steps
+%
+% WRITING TARGET:
+% ~0.5-1 page.
+%
+% PRACTICAL NOTE:
+% This should sound like a real project closeout section, not a list of loose ends.
+
+\placeholder{conclusion paragraph set 1: synthesize what the data preparation phase accomplished}
+
+\placeholder{conclusion paragraph set 2: synthesize the model comparison and recommendation}
+
+\placeholder{conclusion paragraph set 3: evaluate against Assignment 1 success criteria and note next steps}
+
+% =========================================================
+\section*{Generative AI Use (Transparency Note)}
+\addcontentsline{toc}{section}{Generative AI Use (Transparency Note)}
+
+% Keep, revise, or remove based on your course preference.
+I used generative AI as a support tool for brainstorming, organization, outlining, and editorial refinement of language and structure. I retained full responsibility for all submitted content, verified factual accuracy, and made all final analytical and writing decisions. I did not use AI to fabricate data, falsify results, or misrepresent authorship.
+
+% =========================================================
+% References
+% =========================================================
+\newpage
+\IfFileExists{ref.bib}{
+    \bibliographystyle{plainnat}
+    \bibliography{ref}
+}{
+    \section*{References}
+    \addcontentsline{toc}{section}{References}
+    \noindent\textit{Create a \texttt{ref.bib} file and replace this placeholder with your bibliography once your sources are finalized.}
+}
+
+% =========================================================
+% Appendices
+% =========================================================
+\appendix
+\section*{Appendix A: Supplemental Figures and Tables}
+\addcontentsline{toc}{section}{Appendix A: Supplemental Figures and Tables}
+
+% SUGGESTED APPENDIX CONTENT:
+% - additional evaluation figures
+% - confusion matrices
+% - coefficient / feature importance plots
+% - final dataset schema table if it feels too bulky in the body
+% - optional pipeline diagram
+%
+% Keep the main body readable. Move supporting but non-essential detail here.
+
+\subsection*{A.1 Confusion Matrices}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{figures/model_v1_1_confusion_matrix_logreg.png}
+  {\includegraphics[width=0.72\linewidth]{figures/model_v1_1_confusion_matrix_logreg.png}}
+  {\fbox{Placeholder: add logistic regression confusion matrix here}}
+\caption{Held-out confusion matrix for logistic regression.}
+\label{fig:cm_logreg}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{figures/model_v1_1_confusion_matrix_rf.png}
+  {\includegraphics[width=0.72\linewidth]{figures/model_v1_1_confusion_matrix_rf.png}}
+  {\fbox{Placeholder: add random forest confusion matrix here}}
+\caption{Held-out confusion matrix for random forest.}
+\label{fig:cm_rf}
+\end{figure}
+
+\subsection*{A.2 Model Interpretation Figures}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{figures/model_v1_1_logreg_coefficients.png}
+  {\includegraphics[width=0.90\linewidth]{figures/model_v1_1_logreg_coefficients.png}}
+  {\fbox{Placeholder: add logistic regression coefficients plot here}}
+\caption{Top positive and negative logistic regression coefficients.}
+\label{fig:coef_logreg}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\IfFileExists{figures/model_v1_1_rf_feature_importance.png}
+  {\includegraphics[width=0.90\linewidth]{figures/model_v1_1_rf_feature_importance.png}}
+  {\fbox{Placeholder: add random forest feature importance plot here}}
+\caption{Top random forest feature importances.}
+\label{fig:rf_importance}
+\end{figure}
+
+\subsection*{A.3 Optional Supplemental Table Placeholder}
+
+% Use this only if you want an appendix table for schema, threshold search, or additional metrics.
+\begin{table}[H]
+\centering
+\small
+\caption{Optional supplemental table placeholder.}
+\label{tab:appendix_placeholder}
+\begin{tabular}{@{}L{4cm}L{8cm}@{}}
+\toprule
+\textbf{Item} & \textbf{Notes} \\
+\midrule
+\placeholder{Supplemental item 1} & \placeholder{details} \\
+\placeholder{Supplemental item 2} & \placeholder{details} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\end{document}

@@ -2,21 +2,23 @@
 
 **Project:** ICU Patient Care Analysis (MIMIC-IV Clinical Database Demo)  
 **Phase:** CRISP-DM — Data Preparation (Task 2: Clean Data)  
-**Last updated:** 2026-03-04
+**Last updated:** 2026-03-22
 
 ---
 
-## 1) Purpose (what “cleaning” means in this project)
+## 1) Purpose
 
-This document records the concrete data-quality issues identified during Data Understanding and the specific cleaning decisions made to reach a modeling-ready v1 dataset.
+This document records the concrete data-quality issues identified during Data Understanding and the specific cleaning decisions made to reach a modeling-ready dataset.
 
-Important scope note: I do **not** mutate the source MIMIC tables (e.g., `icu.icustays`, `icu.chartevents`) beyond optional constraints added in the local database for guardrails/tooling. Instead, I “clean” by:
-- normalizing types during query time (casts),
-- filtering/validating timestamps,
-- restricting to a defensible prediction window (0–24h),
-- materializing cleaned/derived tables under a separate schema (`derived`).
+Important scope note: we do **not** mutate the source MIMIC tables (for example, `icu.icustays`, `icu.chartevents`, `hosp.labevents`) beyond optional constraints added in the local database for guardrails and tooling. Instead, we “clean” by:
+- normalizing types during query time
+- filtering and validating timestamps
+- restricting events to a defensible prediction window (0–24h)
+- materializing cleaned and derived tables under a separate schema (`derived`)
 
 This keeps the workflow reproducible and avoids hidden transformations.
+
+This file started as the v1 cleaning report and is still mostly valid. The main update is that the later Assignment 2 work added a targeted v1.1 refresh rather than stopping at the original vitals-only build.
 
 ---
 
@@ -24,145 +26,172 @@ This keeps the workflow reproducible and avoids hidden transformations.
 
 ### 2.1 Quick-load decision (TEXT ingest)
 For speed, tables were loaded locally in Postgres using a quick workflow that preserved values but left many columns as TEXT. This enabled fast SQL iteration but created predictable friction:
-- joins across tables required consistent casting (e.g., `stay_id::int`, `hadm_id::int`)
+- joins across tables required consistent casting (for example, `stay_id::int`, `hadm_id::int`)
 - timestamp comparisons required consistent `::timestamp` casting
 - empty strings can behave differently than NULL
 
 ### 2.2 Practical posture
 Given the project is a class demo dataset on a local workstation, the priority is:
-1) correctness of joins and time logic for v1,
-2) reproducibility,
-3) minimal “magic” cleaning that would hide assumptions.
+1. correctness of joins and time logic
+2. reproducibility
+3. minimal “magic” cleaning that would hide assumptions
+
+That posture stayed the same in both v1 and v1.1.
 
 ---
 
-## 3) Data quality issues identified (what we found)
+## 3) Data quality issues identified
 
 ### 3.1 Type inconsistencies (TEXT vs numeric/time)
 **Issue:** keys and timestamps often require casts (`::int`, `::timestamp`) to behave correctly.  
-**Risk:** silent join mismatches or timestamp filter failures.  
-**Observed symptom:** joining `stay_id` across derived tables can error if one side is text and the other is integer.
+**Risk:** silent join mismatches or timestamp filter failures.
 
 ### 3.2 Timestamp consistency: ICU in/out times
-**Check:** ICU outtime should be after intime.  
-**Result:** no negative/invalid ICU LOS detected (0 rows where `outtime <= intime`).  
+**Check:** ICU `outtime` should be after `intime`.  
+**Result:** no negative/invalid ICU LOS detected in the original QC checks.  
 **Why it matters:** LOS is the core outcome and must be time-consistent.
 
 ### 3.3 Event timestamp alignment (charttime before ICU intime)
 **Issue:** some chart events occur before ICU `intime`.  
-**Observed:** `charttime < intime` exists for core vitals itemids (278 rows in the check performed).  
-**Interpretation:** this is plausibly real-world behavior (e.g., documentation begins in ED or pre-ICU location and carries forward).  
-**Risk:** if used naively, these records could leak “pre-ICU” signals into an ICU-only early window or distort early-window features.
+**Interpretation:** this is plausibly real-world behavior, such as ED or transfer documentation carrying forward.  
+**Risk:** if used naively, these records could leak pre-ICU information into an ICU-only early window or distort early-window features.
 
 ### 3.4 Join integrity / orphans
-**Goal:** ensure core join paths do not have orphans that would break integration.
+The project checked the main join paths needed for v1 and found no true orphan problem on the core routes when blanks / nulls were handled correctly.
 
-**Validated join paths (no orphans observed):**
-- `hosp.admissions.subject_id → hosp.patients.subject_id`
-- `icu.icustays.hadm_id → hosp.admissions.hadm_id`
-- `icu.icustays.subject_id → hosp.patients.subject_id`
-- `icu.chartevents.stay_id → icu.icustays.stay_id`
-- `hosp.diagnoses_icd.hadm_id → hosp.admissions.hadm_id`
+That mattered because once the source tables were quick-loaded as text, a sloppy orphan check could make the situation look worse than it actually was.
 
-**Note on `hosp.labevents`:**
-A union-style orphan check can look scary depending on casting/blank handling, but a focused orphan query confirmed **0 true orphans** when excluding NULL/empty hadm_id. Likely explanation: ingestion-as-text + blanks can masquerade as missing join keys if not normalized.
+### 3.5 Coverage / missingness in early windows
+The original feasibility checks showed that core vitals had strong enough coverage within 6h and 24h windows to support a stay-level v1 dataset.
 
-### 3.5 Coverage / missingness in early window
-For v1, the primary feasibility requirement was: “Are core vitals actually present within 0–24h for most stays?”  
-Result: core vitals coverage was high in both 6h and 24h windows (roughly mid-90s to ~100% across HR/RR/SpO2/BP/MAP; Temp slightly lower but still strong).  
-**Risk:** missingness is not random in ICU data; measurement density can proxy acuity/workflow.
+That same general issue came back again in v1.1 when deciding whether a small lab panel was worth adding. The lab audit showed that a small number of early labs also had enough coverage to justify inclusion.
 
 ---
 
-## 4) Cleaning actions taken (what we did)
+## 4) Cleaning actions taken
 
 ### 4.1 Hard rule: leakage control via time-window restriction
-**Action:** all predictor extraction for v1 is restricted to **0–24 hours after ICU `intime`**.  
-This is enforced in `07_construct_vitals_24h_features.sql` by filtering:
-- `charttime >= intime`
-- `charttime < intime + interval '24 hour'`
+All predictor extraction is restricted to **0–24 hours after ICU `intime`**.
 
-**Why:** prevents using information that would not be available at prediction time, and also blocks post-ICU or late-stay signals.
+This is enforced at query time rather than by rewriting source tables.
+
+**Why:** this is the main leakage-control rule in the project.
 
 ### 4.2 Standardized casting conventions in integration queries
-**Action:** integration queries explicitly cast join keys and timestamps:
-- `stay_id::int`, `hadm_id::int`, `subject_id::int`
-- `intime::timestamp`, `outtime::timestamp`, `charttime::timestamp`
+Integration queries explicitly cast join keys and timestamps:
+- `stay_id::int`
+- `hadm_id::int`
+- `subject_id::int`
+- `intime::timestamp`
+- `outtime::timestamp`
+- event times cast to timestamp as needed
 
-**Why:** prevents type errors and removes ambiguity from TEXT-ingested columns.
+**Why:** this prevents type errors and removes ambiguity from TEXT-ingested columns.
 
-### 4.3 Null/blank handling (defensive)
-**Action:** where relevant, queries treat empty strings as missing values (e.g., `NULLIF(TRIM(col),'')`).  
-**Why:** avoids false “orphans” and prevents accidental joins on blank keys.
+### 4.3 Null/blank handling
+Where relevant, queries treat empty strings as missing values using defensive logic such as:
+- `NULLIF(TRIM(col), '')`
 
-### 4.4 Do not “fix” source event timestamps; instead, filter them
-**Action:** chart events with `charttime < intime` are not edited or deleted in source tables.  
-Instead, the early-window feature extraction filters to `charttime >= intime`.  
-**Why:** preserves provenance; avoids inventing a “corrected” time.
+**Why:** avoids false orphan checks and prevents accidental joins on blank keys.
 
-### 4.5 Materialize cleaned derived tables under `derived` schema
-**Action:** derived artifacts are created under `derived` (not in `icu`/`hosp` schemas):
+### 4.4 Do not “fix” source event timestamps; filter them instead
+Events with timestamps before ICU `intime` are not edited or deleted in source tables.  
+Instead, the feature extraction queries filter to the approved early window.
+
+**Why:** this preserves provenance and avoids inventing corrected timestamps.
+
+### 4.5 Materialize cleaned / derived tables under `derived`
+Derived artifacts are created under `derived`, not in the source schemas.
+
+This now includes both the original v1 artifacts and the later v1.1 additions.
+
+Examples:
 - `derived.vitals_24h_by_stay_v1`
-- `derived.icu_stay_modeling_24h_v1`
+- `derived.labs_24h_by_stay_v1_1`
+- `derived.context_features_by_stay_v1_1`
+- `derived.icu_stay_modeling_24h_v1_1`
 
-**Why:** clean separation between “raw-ish source” and “prepared data products,” enabling clear lineage.
+**Why:** this keeps the separation between raw-ish source data and prepared analytical artifacts clear.
 
 ---
 
 ## 5) Validation (how we know cleaning worked)
 
-The following checks were executed and are reproducible via SQL scripts:
+The following checks were part of the reproducible cleaning / preparation workflow:
 
-### 5.1 Row count and uniqueness (modeling table)
-- Expectation: one row per stay_id for v1 modeling.
-- Verified: 140 rows, 140 distinct `stay_id`.
+### 5.1 Row count and uniqueness
+The modeling table is expected to have one row per `stay_id`.
 
-### 5.2 Outcome prevalence sanity (prolonged LOS label)
-- Verified: 16 positives out of 140 stays (11.4%) for LOS ≥ 8 days.
+This was checked for v1 and again for v1.1.
+
+### 5.2 Outcome prevalence sanity
+The prolonged LOS label was checked after integration to make sure the target distribution still made sense and had not been distorted by joins.
 
 ### 5.3 Key integrity checks
-- Verified: 0 orphans on all core join paths used for v1 (`patients/admissions/icustays/chartevents/admission_type`).
+The core join paths used for the actual project workflow were checked and did not show a real orphan problem once text-ingest quirks were handled correctly.
 
 ### 5.4 Early-window coverage checks
-- Verified: high presence rates for core vitals within 6h and 24h windows.
+The early-window feature sources used in the final project had enough coverage to justify inclusion:
+- core vitals in v1
+- grouped context and small early lab panel in v1.1
 
 ---
 
-## 6) Remaining issues / limitations (what we are NOT solving yet)
+## 6) Remaining issues / limitations
 
 ### 6.1 TEXT-ingested schema (technical debt)
-Current approach relies on repeated casting in queries. This is acceptable for v1, but:
-- it increases query verbosity
-- it increases the chance of “one missed cast” causing an error or silent mismatch
+The current approach still relies on repeated casting in queries.
 
-**Future improvement:** run a typed ingestion (COPY into typed tables) or create typed views.
+That is acceptable for this project, but it does mean:
+- the SQL is more verbose than it would be in a typed ingestion
+- one missed cast can still cause confusion
+
+A fully typed reload would be cleaner, but it was not necessary for this capstone.
 
 ### 6.2 Systematic missingness and measurement bias
-Measurement frequency is a feature, but it is also a bias mechanism. A sicker patient may have more measurements, and “missingness” can encode workflow rather than physiology.
+Measurement frequency is a feature, but it is also a bias mechanism. A sicker patient may have more measurements, and missingness can reflect workflow as much as physiology.
 
-**Mitigation used in v1:** include measurement density (`n_chartevents_6h/24h`) and missingness counts as explicit predictors/controls.
+The project dealt with that by keeping density and missingness explicit rather than pretending they did not exist.
 
 ### 6.3 External validity
-This is a demo subset (100 patients). Cleaning cannot fix sample size limitations; conclusions must remain conservative.
+This is still a demo subset. Cleaning can improve the workflow, but it cannot fix sample size limitations or make the cohort more representative than it is.
 
 ---
 
 ## 7) Traceability (how to reproduce)
 
-### Scripts
+### SQL scripts
 - `data/sql/07_construct_vitals_24h_features.sql`
-- `data/sql/08_build_modeling_table_icu_stay_24h.sql`
-- `data/sql/09_report_tables_assignment1.sql` (evidence exports)
+- `data/sql/10_assignment2_feature_audit_v1_1.sql`
+- `data/sql/11_construct_labs_24h_features_v1_1.sql`
+- `data/sql/12_build_modeling_table_icu_stay_24h_v1_1.sql`
 
-### Artifacts
+### Main artifacts
 - `derived.vitals_24h_by_stay_v1`
-- `derived.icu_stay_modeling_24h_v1`
-- `data/processed/icu_stay_modeling_24h_v1.csv`
+- `derived.labs_24h_by_stay_v1_1`
+- `derived.context_features_by_stay_v1_1`
+- `derived.icu_stay_modeling_24h_v1_1`
+- `data/processed/icu_stay_modeling_24h_v1_1.csv`
 
 ---
 
-## 8) Next cleaning step (v2)
-If expanding beyond vitals:
-- add a small lab feature set (0–24h) with strict timing rules and coverage profiling,
-- document any imputation strategy explicitly (likely “no imputation for v2; add missingness indicators first”),
-- consider typed views to remove repeated casts.
+## 8) v1.1 cleaning update
+
+The original version of this file treated labs as a possible future step. That is no longer the current state.
+
+The later Assignment 2 work added a small lab panel and grouped context variables through a targeted refresh. That update did **not** change the basic cleaning posture. The same principles still applied:
+- keep event timing explicit
+- cast types defensively
+- aggregate event tables to stay level before joining
+- keep missingness visible
+- preserve source provenance
+
+So the v1.1 refresh was an extension of the same cleaning logic, not a different cleaning philosophy.
+
+---
+
+## 9) Bottom line
+
+The cleaning strategy in this project stays pretty simple: do not hide assumptions, do not mutate source data unless there is a very strong reason, and do not let loose typing or timestamp sloppiness quietly break the modeling dataset.
+
+The later v1.1 refresh expanded the prepared dataset, but it did not change the core cleaning posture. It just carried the same rules forward into a slightly richer final dataset.

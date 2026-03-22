@@ -1,39 +1,43 @@
-# 04 — Integrate Data (Join Strategy + Grain Alignment Notes) — v1
+# 04 — Integrate Data (Join Strategy + Grain Alignment Notes) — v1.1
 
 **Project:** ICU Patient Care Analysis (MIMIC-IV Clinical Database Demo)  
 **Phase:** CRISP-DM — Data Preparation (Task 4: Integrate Data)  
-**Last updated:** 2026-03-04
+**Last updated:** 2026-03-22
 
 ---
 
 ## 1) Purpose
 
-This document records how data from multiple MIMIC-IV tables are combined into a single, modeling-ready dataset, including:
-- the chosen unit of analysis (grain),
-- join keys and join types,
-- safeguards against row duplication ("join explosions"),
-- rationale for what is integrated in v1 vs deferred.
+This document records how data from multiple MIMIC-IV tables are combined into a single modeling-ready dataset, including:
+- the chosen unit of analysis (grain)
+- join keys and join types
+- safeguards against row duplication
+- rationale for what is integrated now versus deferred
 
-Integration is where otherwise-correct analyses frequently go wrong in healthcare data, because event tables are high-cardinality and many-to-one relative to the modeling grain.
+Integration is where otherwise-correct analyses often go wrong in healthcare data, because event tables are high-cardinality and many-to-one relative to the modeling grain.
+
+This version updates the earlier v1 notes to reflect the final v1.1 integration path actually used for Assignment 2.
 
 ---
 
 ## 2) Modeling grain (the anchor decision)
 
-**v1 unit of analysis:** ICU stay (`stay_id`)
+**Unit of analysis:** ICU stay (`stay_id`)
 
-**Anchor table:** `icu.icustays`  
+**Anchor table:** `icu.icustays`
+
 This table defines:
 - the modeling entity (`stay_id`)
 - ICU timing (`intime`, `outtime`)
-- ICU length of stay (`los`) used for outcome label
+- ICU length of stay (`los`) used for the outcome label
 - ICU context (`first_careunit`, `last_careunit`)
 - link keys to higher grains (`subject_id`, `hadm_id`)
 
-**Why this grain works for v1:**
-- LOS is naturally defined at ICU stay level.
-- ICU timing provides a clean reference point for leakage-safe windows (0–24h from ICU `intime`).
-- Event tables like `icu.chartevents` link cleanly to `stay_id`.
+**Why this grain still works:**
+- LOS is naturally defined at ICU stay level
+- ICU timing provides a clean reference point for leakage-safe windows
+- event tables like `icu.chartevents` link cleanly to `stay_id`
+- higher-level sources like `hosp.admissions` and `hosp.labevents` can still be brought in safely once they are reduced to the stay grain
 
 ---
 
@@ -45,161 +49,240 @@ The integration relies on three key identifiers:
 - `hadm_id` (hospital admission)
 - `stay_id` (ICU stay)
 
-For v1 integration:
+For the final v1.1 integration:
 
 ### 3.1 ICU stay to admission context
-**Join:** `icu.icustays.hadm_id → hosp.admissions.hadm_id`  
-**Join type:** LEFT JOIN (keep all ICU stays even if admission context is missing)
+**Join:** `icu.icustays.hadm_id -> hosp.admissions.hadm_id`  
+**Join type:** `LEFT JOIN`
 
-**Rationale:**
-- `admission_type` is a lightweight contextual feature.
-- Using LEFT JOIN prevents accidental row loss if a record is missing upstream.
+**Used for:**
+- raw `admission_type` for auditability
+- grouped `admission_type_grp` after stay-level context construction
+
+**Why:**
+- preserve the ICU stay cohort even if admission context is missing
+- keep missingness visible rather than silently dropping stays
 
 ### 3.2 ICU stay to vitals event data
-**Join:** `icu.chartevents.stay_id → icu.icustays.stay_id`  
-**Join type:** not joined directly into the modeling table; instead it is **aggregated first**, then joined.
+**Join path:** `icu.chartevents.stay_id -> icu.icustays.stay_id`
 
-**Rationale:**
-- `icu.chartevents` is many-to-one relative to `stay_id`.
-- Direct joining `chartevents` into a stay-level table would multiply rows and corrupt modeling grain.
-- Therefore, integration is two-step: aggregate → wide features → join.
+**Important rule:**  
+`chartevents` is **not** joined directly into the final modeling table.
+
+It is:
+1. filtered to the early window
+2. aggregated to one row per stay
+3. joined back as a small derived table
+
+**Used for:**
+- early vitals summaries
+- measurement density
+- missingness counts
+
+### 3.3 ICU stay to lab event data
+**Join path:** `icu.icustays.hadm_id -> hosp.labevents.hadm_id`
+
+**Important rule:**  
+`labevents` is also **not** joined directly into the final modeling table.
+
+It is:
+1. filtered to the early window using ICU `intime`
+2. mapped to a small candidate concept panel
+3. aggregated to one row per stay
+4. joined back as a small derived table
+
+**Used for:**
+- creatinine features
+- WBC features
+- hemoglobin features
+- lactate features
+
+### 3.4 ICU stay to grouped context features
+The grouped context table is materialized separately at the stay grain, then joined back to the anchor table.
+
+**Used for:**
+- `admission_type_grp`
+- `first_careunit_grp`
+
+This keeps the grouping logic explicit and easier to validate.
 
 ---
 
-## 4) Integration pattern used in v1 (safe two-step approach)
+## 4) Integration pattern used in v1.1
 
-v1 integration uses a disciplined pattern:
+The project uses a safe, staged integration pattern.
 
-### Step A — Construct stay-level features from event tables
-- `icu.chartevents` is filtered to the early window (0–24h from ICU `intime`)
-- Relevant `itemid`s are mapped to vital concepts
-- Values are aggregated per `stay_id` into summary features
+### Step A — Construct stay-level event features
+From `icu.chartevents`:
+- filter to the early window (0–24h from ICU `intime`)
+- map selected item IDs to vital concepts
+- aggregate measurements into one row per `stay_id`
 
-**Output table:**
-- `derived.vitals_24h_by_stay_v1` (one row per `stay_id`)
+Output:
+- `derived.vitals_24h_by_stay_v1`
 
-This table is the integration-friendly representation of the event data.
+From `hosp.labevents`:
+- filter to the early window using ICU `intime`
+- map selected item IDs to a small lab concept panel
+- aggregate to one row per `stay_id`
 
-### Step B — Join small, stay-level tables into the modeling table
-Build final modeling table by joining:
+Output:
+- `derived.labs_24h_by_stay_v1_1`
+
+### Step B — Construct grouped context features
+From:
+- `icu.icustays`
+- `hosp.admissions`
+
+Build a separate stay-level context table containing grouped variables.
+
+Output:
+- `derived.context_features_by_stay_v1_1`
+
+### Step C — Join small stay-level tables into the final modeling table
+Build the final v1.1 modeling table by joining:
 
 - `icu.icustays` (anchor)
-- `hosp.admissions` (context)
-- `derived.vitals_24h_by_stay_v1` (constructed predictors)
+- `hosp.admissions` (raw admission context for auditability)
+- `derived.vitals_24h_by_stay_v1`
+- `derived.labs_24h_by_stay_v1_1`
+- `derived.context_features_by_stay_v1_1`
 
-**Output table:**
-- `derived.icu_stay_modeling_24h_v1` (one row per stay)
+Output:
+- `derived.icu_stay_modeling_24h_v1_1`
 
----
+### Step D — Export modeling artifact
+The final modeling table is exported to:
 
-## 5) Join types and why they were chosen
-
-### 5.1 Anchor-first mindset
-Integration always starts from the anchor entity (icustays) and adds fields.
-
-### 5.2 LEFT JOIN as the default for context/features
-- LEFT JOIN preserves the anchor cohort and keeps missingness explicit.
-- This is preferred to INNER JOIN unless exclusion is intentional and documented.
-
-### 5.3 Aggregation before integration for event tables
-- Event tables (`chartevents`, later possibly `labevents`) must be **summarized to stay grain** before joining.
-- This is the primary control against join explosions.
+- `data/processed/icu_stay_modeling_24h_v1_1.csv`
 
 ---
 
-## 6) Guardrails and validation checks
+## 5) Join choices and rationale
 
-Integration correctness is validated using the following checks:
+### 5.1 Anchor-first integration
+All integration begins from the anchor cohort in `icu.icustays`.
 
-### 6.1 Grain integrity check (required)
-The modeling table must satisfy:
+This keeps the row contract simple:
+- one stay in the anchor table should remain one row in the output table
+
+### 5.2 LEFT JOIN as default
+For context and derived-feature tables, `LEFT JOIN` is preferred unless exclusion is intentional and documented.
+
+This keeps missingness visible rather than silently dropping rows.
+
+### 5.3 Aggregate before join for event tables
+High-cardinality event tables must be reduced to the stay grain before integration.
+
+That rule applies to:
+- `chartevents`
+- `labevents`
+
+This is the primary protection against join explosions.
+
+### 5.4 Keep raw and grouped context separate on purpose
+The project retains raw context fields for auditability, but the grouped versions are the intended modeling inputs in v1.1.
+
+That split keeps the final dataset easier to debug without forcing the model to rely on sparse raw categories.
+
+---
+
+## 6) Validation and guardrails
+
+### 6.1 Grain integrity
+The final modeling table must satisfy:
+
 - `COUNT(*) == COUNT(DISTINCT stay_id)`
 
 This confirms:
 - one row per stay
 - no duplicate rows from joins
 
-### 6.2 Outcome sanity check (label prevalence)
-Validate:
-- expected positives count for `prolonged_los_8d`
+### 6.2 Outcome prevalence sanity
+The prolonged LOS label is checked after integration to ensure row duplication has not distorted the target.
 
-In v1:
-- 140 stays total
-- 16 prolonged (LOS ≥ 8 days)
+### 6.3 Join integrity checks
+Core paths should be checked for orphans as needed:
+- admissions -> patients
+- icustays -> admissions
+- chartevents -> icustays
+- labevents -> admissions
 
-This confirms:
-- no accidental row duplication
-- no accidental row filtering
+### 6.4 Cohort preservation
+The anchor-first + left-join approach helps ensure that missing context or missing labs do not become accidental row exclusion.
 
-### 6.3 Key integrity checks (orphan checks)
-Core paths are checked for orphans:
-- admissions → patients
-- icustays → admissions
-- chartevents → icustays
-- diagnoses_icd → admissions (future use)
-
-These reduce the risk of silent join failures or dropped records.
+### 6.5 Event-window guardrail
+Event tables are filtered to the early window before aggregation. This is the main protection against turning later information into early predictors.
 
 ---
 
-## 7) Integration decisions deferred (why not included in v1)
+## 7) Lineage from source to final artifact
 
-v1 intentionally integrates only the minimum necessary sources to create a valid baseline dataset.
+The final v1.1 lineage is:
 
-### 7.1 Labs (`hosp.labevents`) deferred
-**Why:**  
-- high cardinality; hadm_id-level (not always stay_id-level)
-- requires careful temporal alignment and selection of a small lab panel
-- increases risk of row explosion if joined directly
+1. raw source tables in `hosp` and `icu`
+2. filtered / aggregated stay-level vitals table  
+   -> `derived.vitals_24h_by_stay_v1`
+3. filtered / aggregated stay-level labs table  
+   -> `derived.labs_24h_by_stay_v1_1`
+4. grouped stay-level context table  
+   -> `derived.context_features_by_stay_v1_1`
+5. final integrated modeling table  
+   -> `derived.icu_stay_modeling_24h_v1_1`
+6. exported modeling file  
+   -> `data/processed/icu_stay_modeling_24h_v1_1.csv`
 
-**Planned v2 integration:**  
-- filter to early window using ICU `intime` (or admit time with explicit assumptions)
-- aggregate to stay-level features (like vitals)
-- join aggregated lab features to the modeling table
-
-### 7.2 Diagnoses (`hosp.diagnoses_icd`) deferred
-**Why:**  
-- diagnosis timing/availability is often unclear (codes can be finalized later)
-- cohort mapping logic is non-trivial and can become subjective
-- better used later for stratification or risk adjustment once baseline model exists
-
-### 7.3 Medications / procedures deferred
-**Why:**  
-- risk of encoding post-window treatment decisions (leakage)
-- requires careful "available by prediction time" assumptions
-- some tables may be sparse in demo subset
+This versioned naming keeps the data products easy to trace and safe to rebuild.
 
 ---
 
-## 8) Naming / lineage conventions
+## 8) What is still deferred
 
-v1 uses explicit versioned derived artifacts:
+The final v1.1 integration is broader than v1, but it is still intentionally not exhaustive.
 
-- `derived.vitals_24h_by_stay_v1`
-- `derived.icu_stay_modeling_24h_v1`
-- export: `data/processed/icu_stay_modeling_24h_v1.csv`
+### 8.1 Diagnoses
+`hosp.diagnoses_icd` is still deferred.
 
-This provides clean lineage and makes it safe to create v2 tables without overwriting v1.
+**Why:**
+- diagnosis timing and availability can be unclear
+- coding may reflect post-hoc information
+- cohort mapping logic can become subjective
+
+### 8.2 Medications / procedures
+Medication and procedure sources are still deferred.
+
+**Why:**
+- they risk encoding treatment decisions made after the prediction window
+- they require more careful availability assumptions
+- they add scope without being necessary for a defensible Assignment 2 result
+
+### 8.3 Larger lab expansion
+Only a small lab panel was added in v1.1.
+
+**Why:**
+- the goal was a targeted refresh, not a full lab-feature build
+- the project needed a better feature mix, not a massive expansion
 
 ---
 
 ## 9) Reproducibility (how to re-run)
 
 ### Scripts of record
-- `data/sql/07_construct_vitals_24h_features.sql` (construct)
-- `data/sql/08_build_modeling_table_icu_stay_24h.sql` (integrate)
-- `data/sql/09_report_tables_assignment1.sql` (evidence/QA exports)
+- `data/sql/07_construct_vitals_24h_features.sql`
+- `data/sql/10_assignment2_feature_audit_v1_1.sql`
+- `data/sql/11_construct_labs_24h_features_v1_1.sql`
+- `data/sql/12_build_modeling_table_icu_stay_24h_v1_1.sql`
 
 ### Minimal replay order
-1) Run 07 (creates vitals-by-stay)
-2) Run 08 (creates modeling table)
-3) Run QA checks (row count, distinct stay_id, prevalence)
-4) Export CSV for modeling
+1. run 07 (vitals-by-stay)
+2. run 10 if audit refresh needs to be revisited
+3. run 11 (labs + grouped context)
+4. run 12 (final v1.1 modeling table)
+5. validate row count, distinct `stay_id`, and target prevalence
+6. export CSV for modeling
 
 ---
 
-## 10) Planned integration changes (v2 roadmap)
-- Add a small early-window lab panel (coverage-gated), aggregated to stay grain.
-- Consider adding a minimal diagnoses-derived cohort indicator (only if timing assumptions are defensible).
-- Maintain the rule: **event tables must be aggregated to stay-level before integration**.
+## 10) Bottom line
 
+The v1.1 integration strategy is still simple by design: start from ICU stays, reduce event tables to the stay grain before joining, preserve the anchor cohort with left joins, and version the derived artifacts clearly. The difference from v1 is that the final pipeline now includes a small early lab panel and grouped context features, which gave the modeling dataset a more balanced and defensible feature mix.
